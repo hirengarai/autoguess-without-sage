@@ -62,7 +62,7 @@ class Macaulay:
         # print(self.symbolic_variables)
         elapsed = time.time() - t0
         print(f'Algebrize input polynomials done in {elapsed:.4f} seconds')
-        print("The %d variables are %s" % (len(self.symbolic_variables), self.symbolic_variables))
+        # print("The %d variables are %s" % (len(self.symbolic_variables), self.symbolic_variables))
         # return symbolic_polynomials, symbolic_variables
     
     def build_macaulay_polynomials(self):
@@ -134,7 +134,7 @@ class Macaulay:
                 self.D = min_deg
             self.build_macaulay_polynomials()
         else:
-            print("[INFO] All polynomials are linear, skipping Macaulay lifting")
+            print("All polynomials are linear, skipping Macaulay lifting")
             self.macaulay_polynomials = self.symbolic_polynomials
 
         # 2. Collect & order all monomials (exponent‑tuples) in graded‑lex order
@@ -176,8 +176,6 @@ class Macaulay:
         
         self.R = A.row_reduce()
         
-    
-
         # convert to numpy to inspect bit patterns
         R_np = np.array(self.R, dtype=np.uint8)
 

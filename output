@@ -1,42 +1,69 @@
-Number of relations: 5
-Number of variables: 7
-Number of target variables: 7
-Number of known variables: 0
-Number of guessed variables: 2
+Number of relations: 24
+Number of variables: 14
+Number of target variables: 14
+Number of known variables: 6
+Number of guessed variables: 1
 Number of state copies (max_steps): 5
-An upper bound for the number of guessed variables given by user (max_guess): 7
-7 out of 7 state variables are known after 5 state copies
+An upper bound for the number of guessed variables given by user (max_guess): 1
+14 out of 14 state variables are known after 5 state copies
 ############################################################
-The following 2 variable(s) are guessed:
-v, u
+The following 1 variable(s) are guessed:
+X3
 ############################################################
-The following 0 variable(s) are initially known:
-
+The following 6 variable(s) are initially known:
+QGYL123, QGYL013, QGYL012, QGYL12, QGYL01, X4
 ############################################################
 Target variables:
-x, s, v, u, y, z, t
+X1, X3, QGYL02, X2, X4, QGYL13, QGYL12, QGYL23, QGYL023, QGYL03, QGYL123, QGYL012, QGYL01, QGYL013
 ############################################################
 Determination flow:
 
 State 0:
-v, u in symmetric relation [v, u, s] are known: v, u ===> s
+QGYL01, QGYL12, X3, X4 in symmetric relation [QGYL01, QGYL02, QGYL12, X3, X4] are known: QGYL01, QGYL12, X3, X4 ===> QGYL02
+QGYL01, QGYL12, X3 in symmetric relation [QGYL01, QGYL12, QGYL03, X3] are known: QGYL01, QGYL12, X3 ===> QGYL03
+X3 in symmetric relation [X3, X1] are known: X3 ===> X1
+X3, X4 in implication relation [X3, X4 => QGYL23] are known: X3, X4 ===> QGYL23
 ############################################################
 State 1:
-s, v in symmetric relation [x, s, v] are known: s, v ===> x
-############################################################
-State 2:
-u, x in symmetric relation [u, t, x] are known: u, x ===> t
-############################################################
-State 3:
-s, v, t in symmetric relation [z, s, v, t] are known: s, v, t ===> z
-############################################################
-State 4:
-x, u, s, z in symmetric relation [x, u, s, y, z] are known: x, u, s, z ===> y
+QGYL02, X1, X3, X4 in symmetric relation [QGYL02, QGYL13, X1, X3, X4] are known: QGYL02, X1, X3, X4 ===> QGYL13
+QGYL12, QGYL03, QGYL23, X1, X4 in symmetric relation [QGYL12, QGYL03, QGYL23, X1, X2, X4] are known: QGYL12, QGYL03, QGYL23, X1, X4 ===> X2
+QGYL23, X1, X3 in symmetric relation [QGYL13, QGYL23, X1, X3] are known: QGYL23, X1, X3 ===> QGYL13
+QGYL02, QGYL03, QGYL23, X1, X3, X4 in symmetric relation [QGYL02, QGYL03, QGYL23, X1, X2, X3, X4] are known: QGYL02, QGYL03, QGYL23, X1, X3, X4 ===> X2
+QGYL01, X1 in symmetric relation [QGYL01, QGYL13, X1] are known: QGYL01, X1 ===> QGYL13
+X1 in symmetric relation [QGYL023, X1] are known: X1 ===> QGYL023
+X1 in symmetric relation [QGYL13, X1] are known: X1 ===> QGYL13
+X1 in symmetric relation [X2, X1] are known: X1 ===> X2
+X1, X3, X4 in implication relation [X1, X3, X4 => QGYL023] are known: X1, X3, X4 ===> QGYL023
 ############################################################
 The following variables are known in final state:
-x, s, v, u, y, z, t
+X1, X3, QGYL02, X2, X4, QGYL13, QGYL12, QGYL23, QGYL023, QGYL03, QGYL123, QGYL012, QGYL01, QGYL013
 ############################################################
 The following relations have not been used in determination (they might be used to check the correctness of guesses):
-
+QGYL23, X1
+QGYL03, X1
+QGYL02, X1
+X1, X3 => QGYL02
+X2, X4 => QGYL13
+X2, X3 => QGYL12
+X1, X4 => QGYL03
+X2, X3, X4 => QGYL123
+X1, X2, X3 => QGYL012
+X1, X2 => QGYL01
+X1, X2, X4 => QGYL013
 ############################################################
 The following variables can be deduced from multiple paths:
+
+X2 can be deduced from:
+QGYL12, QGYL03, QGYL23, X1, X2, X4
+QGYL02, QGYL03, QGYL23, X1, X2, X3, X4
+X2, X1
+
+QGYL13 can be deduced from:
+QGYL02, QGYL13, X1, X3, X4
+QGYL13, QGYL23, X1, X3
+QGYL01, QGYL13, X1
+QGYL13, X1
+
+QGYL023 can be deduced from:
+QGYL023, X1
+X1, X3, X4 => QGYL023

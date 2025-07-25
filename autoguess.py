@@ -185,7 +185,7 @@ def main():
                         "max = convert the problem to a maximization problem in which the known variables in final state are maximized,\n"
                         "when the size of the initially known variables is equal or less than \"maxguess\"\n")
     parser.add_argument('-cps', '--cpsolver', nargs=1, type=str,
-                        choices=['gecode', 'chuffed', 'coin-bc', 'gurobi', 'picat', 'scip', 'choco', 'or-tools'], help="\n")
+                        choices=['gecode', 'chuffed', 'coin-bc', 'gurobi', 'highs', 'picat', 'scip', 'choco', 'or-tools', 'cbc', 'mip'], help="\n")
     parser.add_argument('-sats', '--satsolver', nargs=1, type=str,
                         choices=['cadical153', 'glucose3', 'glucose4', 'lingeling', 'maplechrono', 'maplecm', 'maplesat', 'minicard', 'minisat22', 'minisat-gh'], help="\n")
     parser.add_argument('-smts', '--smtsolver', nargs=1, type=str,

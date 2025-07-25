@@ -44,8 +44,19 @@ class ReduceGDtoCP:
         self.dglayout = dglayout
         self.log = log  
 
+        # self.supported_cp_solvers = [
+        #     'gecode', 'chuffed', 'cbc', 'gurobi', 'picat', 'scip', 'choco', 'or-tools', 'cp-sat', 'com.google.ortools.sat']
         self.supported_cp_solvers = [
-            'gecode', 'chuffed', 'cbc', 'gurobi', 'picat', 'scip', 'choco', 'or-tools', 'cp-sat', 'com.google.ortools.sat']
+            'cbc',         # COIN-BC
+            'coinbc',      # COIN-BC alternative tag
+            'cp',          # OR-Tools CP-SAT tag
+            'cp-sat',      # OR-Tools CP-SAT full name
+            'gurobi',      # Gurobi
+            'highs',       # HiGHS
+            'scip',        # SCIP
+            'xpress',      # Xpress
+            'mip'
+        ]
         assert(self.cp_solver_name in self.supported_cp_solvers)                
 
         if ortools_available:
