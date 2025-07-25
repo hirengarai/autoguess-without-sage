@@ -9,9 +9,8 @@ A standalone implementation of the Autoguess tool that does not require SageMath
 
 Before using this tool, ensure you have the following installed on your system:
 
-- **Minizinc**: A constraint solver used for solving the Macaulay matrix system.  
+- **Minizinc**
 - **Z3**: It is the default SMT solver  
-- **Python 3.6+**: The script is written for Python 3.  
 - **setuptools**: For packaging support.
 
 ### Python dependencies
@@ -23,7 +22,7 @@ pip install minizinc
 
 pip install 'python-sat[pblib,aiger]' 
 
-pip pysmt 
+pip install pysmt 
 
 pip install setuptools
 
@@ -260,5 +259,23 @@ Number of known variables in the final state: 14 out of 14
 The following 1 variable(s) are guessed:
 X3
 ```
+
+### PRESENT80
+
+### CP
+
+```bash
+python3 autoguess.py --inputfile ciphers/PRESENT/relationfile.txt --solver cp --preprocess 1 --D 2 --maxguess 60 --maxsteps 10
+```
+
+### Terminal output
+```bash
+
+```
+
+
+### To Do
+- MILP, Gröbner basis method is not supported
+- The preprocessing phase for long systems is quite a bit slow (e.g. in the PRESENT)
 
 

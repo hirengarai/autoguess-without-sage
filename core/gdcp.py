@@ -28,7 +28,7 @@ try:
         print("OR Tools is not available")
 except FileNotFoundError:
     ortools_available = False
-    print("MiniZinc not found")
+    # print("MiniZinc not found")
 
 class ReduceGDtoCP:
     count = 0
@@ -46,18 +46,20 @@ class ReduceGDtoCP:
 
         # self.supported_cp_solvers = [
         #     'gecode', 'chuffed', 'cbc', 'gurobi', 'picat', 'scip', 'choco', 'or-tools', 'cp-sat', 'com.google.ortools.sat']
-        self.supported_cp_solvers = [
-            'cbc',         # COIN-BC
-            'coinbc',      # COIN-BC alternative tag
-            'cp',          # OR-Tools CP-SAT tag
-            'cp-sat',      # OR-Tools CP-SAT full name
-            'gurobi',      # Gurobi
-            'highs',       # HiGHS
-            'scip',        # SCIP
-            'mip',         # SCIP alternative tag
-            'xpress',      # Xpress
-            'gecode'
-        ]
+        # self.supported_cp_solvers = [
+        #     'cbc',         # COIN-BC
+        #     'coinbc',      # COIN-BC alternative tag
+        #     'cp',          # OR-Tools CP-SAT tag
+        #     'cp-sat',      # OR-Tools CP-SAT full name
+        #     'gurobi',      # Gurobi
+        #     'highs',       # HiGHS
+        #     'scip',        # SCIP
+        #     'mip',         # SCIP alternative tag
+        #     'xpress',      # Xpress
+        #     'gecode'
+        # ]
+        self.supported_cp_solvers = ['gecode', 'chuffed', 'cbc', 'coinbc', 'cp', 'cp-sat', 'com.google.ortools.sat',
+        'gurobi', 'highs', 'scip', 'mip', 'xpress', 'picat', 'choco', 'or-tools']
         assert(self.cp_solver_name in self.supported_cp_solvers)                
 
         if ortools_available:

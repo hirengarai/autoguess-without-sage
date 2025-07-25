@@ -1,60 +1,42 @@
-Number of relations: 24
-Number of variables: 14
-Number of target variables: 14
-Number of known variables: 6
-Number of guessed variables: 1
+Number of relations: 5
+Number of variables: 7
+Number of target variables: 7
+Number of known variables: 0
+Number of guessed variables: 2
 Number of state copies (max_steps): 5
-An upper bound for the number of guessed variables given by user (max_guess): 1
-14 out of 14 state variables are known after 5 state copies
+An upper bound for the number of guessed variables given by user (max_guess): 7
+7 out of 7 state variables are known after 5 state copies
 ############################################################
-The following 1 variable(s) are guessed:
-X1
+The following 2 variable(s) are guessed:
+v, u
 ############################################################
-The following 6 variable(s) are initially known:
-OXHA123, OXHA013, OXHA012, OXHA12, OXHA01, X4
+The following 0 variable(s) are initially known:
+
 ############################################################
 Target variables:
-X1, X3, OXHA02, X4, OXHA23, OXHA03, X2, OXHA013, OXHA123, OXHA01, OXHA12, OXHA023, OXHA13, OXHA012
+x, s, v, u, y, z, t
 ############################################################
 Determination flow:
 
 State 0:
-OXHA01, X1 in symmetric relation [OXHA01, OXHA13, X1] are known: OXHA01, X1 ===> OXHA13
-X1 in symmetric relation [OXHA023, X1] are known: X1 ===> OXHA023
-X1 in symmetric relation [OXHA23, X1] are known: X1 ===> OXHA23
-X1 in symmetric relation [OXHA13, X1] are known: X1 ===> OXHA13
-X1 in symmetric relation [OXHA03, X1] are known: X1 ===> OXHA03
-X1 in symmetric relation [OXHA02, X1] are known: X1 ===> OXHA02
-X1 in symmetric relation [X3, X1] are known: X1 ===> X3
-X1 in symmetric relation [X2, X1] are known: X1 ===> X2
-X1, X4 in implication relation [X1, X4 => OXHA03] are known: X1, X4 ===> OXHA03
+v, u in symmetric relation [v, u, s] are known: v, u ===> s
+############################################################
+State 1:
+s, v in symmetric relation [x, s, v] are known: s, v ===> x
+############################################################
+State 2:
+u, x in symmetric relation [u, t, x] are known: u, x ===> t
+############################################################
+State 3:
+s, v, t in symmetric relation [z, s, v, t] are known: s, v, t ===> z
+############################################################
+State 4:
+x, u, s, z in symmetric relation [x, u, s, y, z] are known: x, u, s, z ===> y
 ############################################################
 The following variables are known in final state:
-X1, X3, OXHA02, X4, OXHA23, OXHA03, X2, OXHA013, OXHA123, OXHA01, OXHA12, OXHA023, OXHA13, OXHA012
+x, s, v, u, y, z, t
 ############################################################
 The following relations have not been used in determination (they might be used to check the correctness of guesses):
-OXHA02, OXHA13, X1, X3, X4
-OXHA12, OXHA03, OXHA23, X1, X2, X4
-OXHA13, OXHA23, X1, X3
-OXHA01, OXHA02, OXHA12, X3, X4
-OXHA01, OXHA12, OXHA03, X3
-OXHA02, OXHA03, OXHA23, X1, X2, X3, X4
-X1, X3 => OXHA02
-X3, X4 => OXHA23
-X1, X2, X4 => OXHA013
-X2, X3, X4 => OXHA123
-X1, X2 => OXHA01
-X2, X3 => OXHA12
-X1, X3, X4 => OXHA023
-X2, X4 => OXHA13
-X1, X2, X3 => OXHA012
+
 ############################################################
 The following variables can be deduced from multiple paths:
-
-OXHA03 can be deduced from:
-OXHA03, X1
-X1, X4 => OXHA03
-
-OXHA13 can be deduced from:
-OXHA01, OXHA13, X1
-OXHA13, X1
