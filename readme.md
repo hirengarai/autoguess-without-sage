@@ -10,7 +10,7 @@ A standalone implementation of the Autoguess tool that does not require SageMath
 Before using this tool, ensure you have the following installed on your system:
 
 - **Minizinc**: A constraint solver used for solving the Macaulay matrix system.  
-- **Z3**: The Z3 SMT solver for efficient constraint solving.  
+- **Z3**: It is the default SMT solver  
 - **Python 3.6+**: The script is written for Python 3.  
 - **setuptools**: For packaging support.
 
@@ -35,6 +35,15 @@ pip install numpy
 
 pip install galois
 ```
+
+### Defaults
+
+- cp solver: gecode [comes with minizinc]
+- sat solver: cadical153 [possibly with pysat]
+- smt solver: z3
+
+
+
 ### Example 1
 
 ### CP

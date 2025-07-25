@@ -16,7 +16,7 @@ from config import TEMP_DIR
 import datetime
 import subprocess
 
-# --- OR Tools Detection Fix ---
+
 try:
     output = subprocess.run(['minizinc', '--solvers'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     solvers_str = output.stdout.decode("utf-8").lower()
@@ -54,8 +54,9 @@ class ReduceGDtoCP:
             'gurobi',      # Gurobi
             'highs',       # HiGHS
             'scip',        # SCIP
+            'mip',         # SCIP alternative tag
             'xpress',      # Xpress
-            'mip'
+            'gecode'
         ]
         assert(self.cp_solver_name in self.supported_cp_solvers)                
 
