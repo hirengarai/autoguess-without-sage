@@ -18,20 +18,23 @@ Before using this tool, ensure you have the following installed on your system:
 Install the required Python packages via `pip`:
 
 ```bash
+# 1. Core package manager fix (usually already present)
+pip install --upgrade pip setuptools wheel
+
+# 2. Install MiniZinc Python interface
 pip install minizinc
 
-pip install 'python-sat[pblib,aiger]' 
+# 3. Install PySAT with optional solvers
+pip install 'python-sat[pblib,aiger]'
 
-pip install pysmt 
+# 4. Install PySMT
+pip install pysmt
+pysmt-install --z3   # Still needed separately to install Z3 backend
 
-pip install setuptools
+# 5. Symbolic Math
+# pip install sympy
 
-pysmt-install --z3
-
-pip install sympy
-
-pip install numpy
-
+# 6. Galois includes numpy, so no need to install numpy separately
 pip install galois
 ```
 
