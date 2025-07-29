@@ -54,7 +54,7 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
         with open(algebraic_equations_file, 'w') as equations_file:
             equations_file.write(algebraic_relations)
         starting_time = time.time()
-        print('Preprocessing phase was started - %s' % datetime.now())
+        print('Preprocessing phase started - %s' % datetime.now())
         macaulay_basis_file = os.path.join(TEMP_DIR, 'macaulay_basis_%s.txt' % rnd_string_tmp)
         sage_process = subprocess.call([PATH_SAGE, os.path.join("core", "macaulay.py"), 
                                         "-i", algebraic_equations_file,
@@ -62,7 +62,7 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
                                         "-t", "degrevlex",
                                         "-D", str(D)])
         elapsed_time = time.time() - starting_time
-        print('Preprocessing phase was finished after %0.4f seconds' % elapsed_time)
+        print('Preprocessing phase finished after %0.4f seconds' % elapsed_time)
         try:
             with open(macaulay_basis_file, 'r') as groebner_basis_file:
                 groebner_basis = groebner_basis_file.read()

@@ -31,10 +31,8 @@ pip install 'python-sat[pblib,aiger]'
 pip install pysmt
 pysmt-install --z3   # Still needed separately to install Z3 backend
 
-# 5. Symbolic Math
-# pip install sympy
 
-# 6. Galois includes numpy, so no need to install numpy separately
+# 5. Galois includes numpy, so no need to install numpy separately
 pip install galois
 ```
 
@@ -273,7 +271,23 @@ python3 autoguess.py --inputfile ciphers/PRESENT/relationfile.txt --solver cp --
 
 ### Terminal output
 ```bash
-
+OR Tools is available
+Preprocessing phase started - 2025-07-29 05:44:31.168201
+Macaulay matrix was generated in full matrixspace of 1976 by 2152 sparse matrices over finite field of size 2
+Gaussian elimination started - 2025-07-29 05:44:33.512416
+#Dependent variables: 1976
+#Free variables: 176
+Gaussian elimination was finished after 1.7483 seconds
+Result written to temp/macaulay_basis_219a8f4708c96ebb44cd37b4bd335a.txt in 0.9473 seconds
+Preprocessing phase finished after 5.3408 seconds
+Generating the CP model ...
+CP model was generated after 476.22 seconds
+Solving the CP model with cp-sat ...
+Solving process was finished after 33.31 seconds
+Number of guesses: 60
+Number of known variables in the final state: 1391 out of 2160
+The following 60 variable(s) are guessed:
+k_26_0, k_26_2, k_5_23, k_6_67, k_7_5, k_7_7, k_7_13, k_7_72, k_8_8, k_8_9, k_8_10, k_8_23, k_12_12, k_12_76, k_13_11, k_13_48, k_13_49, k_14_28, k_14_65, k_15_14, k_15_46, k_15_50, k_15_51, k_15_73, k_16_10, k_16_13, k_16_74, k_17_6, k_17_58, k_18_29, k_18_49, k_19_35, k_19_66, k_20_50, k_21_37, k_21_71, k_21_77, k_22_31, k_22_41, k_22_48, k_22_53, k_23_10, k_23_37, k_23_49, k_23_52, k_23_57, k_23_58, k_23_73, k_24_13, k_24_20, k_24_24, k_24_37, k_24_39, k_24_52, k_24_78, k_25_9, k_25_38, k_26_59, k_26_60, k_26_61
 ```
 
 
