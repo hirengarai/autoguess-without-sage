@@ -24,7 +24,12 @@ def parse_solver_solution(gd):
             gd.final_info, len(gd.variables)))
         print('The following %d variable(s) are guessed:' %
               len(gd.guessed_vars))
-        print(', '.join(gd.guessed_vars))
+        # print(', '.join(gd.guessed_vars))
+        for v in gd.guessed_vars:
+            if hasattr(gd, "dummy_mapping") and v in gd.dummy_mapping:
+                print(f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})")
+            else:
+                print(v)
         separator_line = ''.join(['#']*60)
         output_buffer = ''
         output_buffer += 'Number of relations: %d\n' % gd.num_of_relations
@@ -40,8 +45,14 @@ def parse_solver_solution(gd):
         output_buffer += '%d out of %d state variables are known after %d state copies\n' % (
             gd.final_info, gd.num_of_vars, gd.max_steps)
         output_buffer += separator_line
-        output_buffer += '\nThe following %d variable(s) are guessed:\n%s\n' % (
-            len(gd.guessed_vars), ', '.join(gd.guessed_vars))
+        # output_buffer += '\nThe following %d variable(s) are guessed:\n%s\n' % (
+        #     len(gd.guessed_vars), ', '.join(gd.guessed_vars))
+        output_buffer += '\nThe following %d variable(s) are guessed:\n' % len(gd.guessed_vars)
+        for v in gd.guessed_vars:
+            if hasattr(gd, "dummy_mapping") and v in gd.dummy_mapping:
+                output_buffer += f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})\n"
+            else:
+                output_buffer += f"{v}\n"
         output_buffer += separator_line
         output_buffer += '\nThe following %d variable(s) are initially known:\n%s\n' % (
             len(gd.known_variables), ', '.join(gd.known_variables))

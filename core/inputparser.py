@@ -73,12 +73,12 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
         algebraic_relations += '\n' + groebner_basis
         # algebraic_relations = groebner_basis
         if connection_relations == '':
-            connection_relations = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
+            connection_relations, dummy_mapping = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
         else:
             connection_relations += '\n' + algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
     elif algebraic_relations != '' and preprocess == 0:
         if connection_relations == '':
-            connection_relations = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
+            connection_relations, dummy_mapping = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
         else:
             connection_relations += '\n' + algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
     symmetric_relations, implication_relations, variables = parse_connection_relations(connection_relations)
@@ -111,11 +111,37 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
                    'target_weights' : target_weights,
                    'notguessed_variables': notguessed_variables,
                    'symmetric_relations': symmetric_relations,
-                   'implication_relations': implication_relations}
-    if log == 0 and preprocess == 1:
+                   'implication_relations': implication_relations,
+                   'dummy_mapping': dummy_mapping}
+    if log == 0 and algebraic_relations != '' and preprocess == 1:
         os.remove(algebraic_equations_file)
         os.remove(macaulay_basis_file)
+    elif log != 0 and algebraic_relations != '' and preprocess == 1:
+        implication_relations_file = os.path.join(TEMP_DIR, f'extended_relations{rnd_string_tmp}.txt')
+        with open(implication_relations_file, 'w') as file:
+            file.write('--' * 20 + '\n')
+            file.write('implication relations: \n')
+            for relation in implication_relations:
+                file.write(", ".join(relation[:-1]) + '=>' + relation[-1] + '\n')
+            file.write('--' * 20 + '\n')
+            file.write('symmetric relations: \n')
+            for relation in symmetric_relations:
+                file.write(','.join(relation) + '\n')
+            file.write('--' * 20 + '\n')
+            file.write('variables:\n')
+            file.write('\n'.join(variables) + '\n')
+            file.write('--' * 20 + '\n')
+            file.write('known variables:\n')
+            file.write('\n'.join(known_variables) + '\n')
+            file.write('--'* 20 + '\n')
+            file.write('target variables:\n')
+            file.write('\n'.join(target_variables) + '\n')
+            if target_weights is not None:
+                file.write('target weights:\n')
+                for var, weight in target_weights.items():
+                    file.write(f"{var} {weight}\n")
     return parsed_data
+
 
 
 def find_problem_name(contents):
@@ -287,6 +313,7 @@ def algebraic_relations_to_connection_relations(algebraic_relations):
     """
 
     connection_relations = []
+    dummy_mapping = dict()
     if algebraic_relations[-1] == '':
         algebraic_relations[-1:] = []
     algebraic_relations = [poly.replace(' ', '') for poly in algebraic_relations]
@@ -305,6 +332,7 @@ def algebraic_relations_to_connection_relations(algebraic_relations):
             if dummy_var not in substitution_dictionary.values():
                 connection_relations.append("{0}=>{1}".format(
                     ",".join(monomial_variables), dummy_var))
+                dummy_mapping[dummy_var] = monomial_variables
             substitution_dictionary[monomial] = dummy_var
 
     for poly in algebraic_relations:
@@ -314,4 +342,4 @@ def algebraic_relations_to_connection_relations(algebraic_relations):
         if '0' in linearized_relation:
             linearized_relation.remove('0')
         connection_relations.append(",".join(linearized_relation))
-    return "\n".join(connection_relations)
+    return "\n".join(connection_relations), dummy_mapping
