@@ -6,7 +6,7 @@ from itertools import combinations
 
 
 import numpy as np
-sys.path.insert(0, "/home/tools/autoguess/venv/lib/python3.11/site-packages")
+# sys.path.insert(0, "/home/tools/autoguess/venv/lib/python3.11/site-packages")
 import galois
 from gf2poly import parse, GF2Poly
 
