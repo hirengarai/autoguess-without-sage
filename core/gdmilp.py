@@ -47,6 +47,7 @@ class ReduceGDtoMILP:
         ###############################
         # Read and parse the input file
         parsed_data = read_relation_file(self.inputfile_name, preprocess, D)
+        self.dummy_mapping = parsed_data.get("dummy_mapping", {})
         self.problem_name = parsed_data['problem_name']
         self.variables = parsed_data['variables']
         self.known_variables = parsed_data['known_variables']
