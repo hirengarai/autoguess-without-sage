@@ -15,6 +15,14 @@ Before using this tool, ensure you have the following installed on your system:
 
 ### Python dependencies
 
+All the following code are tested on python version [3.12.6](https://www.python.org/downloads/release/python-3126/).
+
+Create a virtual environment in python.
+```bash
+python3 -m venv myenv
+source myenv/bin/activate
+```
+
 Install the required Python packages via `pip`:
 
 ```bash
