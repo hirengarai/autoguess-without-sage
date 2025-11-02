@@ -132,6 +132,77 @@ The following 2 variable(s) are guessed:
 s, v
 ```
 
+### Example 3
+
+### MILP
+```bash
+python3 autoguess.py --inputfile ciphers/Example3/relationfile.txt --solver milp --maxsteps 3
+```
+
+### Terminal output
+
+```bash
+Generating the MILP model ...
+MILP model was generated after 0.00 seconds
+Set parameter Username
+Set parameter LicenseID to value 2707288
+Academic license - for non-commercial use only - expires 2026-09-11
+Read LP format model from file temp/milp_mg50_ms3_min_a6f77139d2b6ae9367ff6efa126040.lp
+Reading time = 0.00 seconds
+: 176 rows, 110 columns, 574 nonzeros
+Set parameter MIPFocus to value 0
+Set parameter Threads to value 0
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[arm] - Darwin 25.0.0 25A362)
+
+CPU model: Apple M3 Pro
+Thread count: 11 physical cores, 11 logical processors, using up to 11 threads
+
+Optimize a model with 176 rows, 110 columns and 574 nonzeros
+Model fingerprint: 0x7dfef622
+Variable types: 0 continuous, 110 integer (110 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 5e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 5e+01]
+Found heuristic solution: objective 8.0000000
+Presolve removed 94 rows and 66 columns
+Presolve time: 0.00s
+Presolved: 82 rows, 44 columns, 286 nonzeros
+Variable types: 0 continuous, 44 integer (44 binary)
+
+Root relaxation: objective 4.130435e-01, 49 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    0.41304    0   29    8.00000    0.41304  94.8%     -    0s
+H    0     0                       3.0000000    0.41304  86.2%     -    0s
+     0     0    1.25000    0   30    3.00000    1.25000  58.3%     -    0s
+     0     0    2.00000    0   26    3.00000    2.00000  33.3%     -    0s
+
+Cutting planes:
+  Gomory: 4
+  Cover: 20
+  Clique: 10
+  Zero half: 3
+  RLT: 11
+
+Explored 1 nodes (117 simplex iterations) in 0.01 seconds (0.01 work units)
+Thread count was 11 (of 11 available processors)
+
+Solution count 2: 3 8 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 3.000000000000e+00, best bound 3.000000000000e+00, gap 0.0000%
+Solving process was finished after 0.01 seconds
+Number of guesses: 3
+Number of known variables in the final state: 8 out of 8
+The following 3 variable(s) are guessed:
+x0, x3, x4
+```
+
 ### Example 4
 
 ### CP
