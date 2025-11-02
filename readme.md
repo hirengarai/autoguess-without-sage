@@ -10,7 +10,8 @@ A standalone implementation of the Autoguess tool that does not require SageMath
 Before using this tool, ensure you have the following installed on your system:
 
 - **Minizinc**
-- **Z3**: It is the default SMT solver  
+- **Z3**: It is the default SMT solver.
+- **Gurobi**: MILP solver.
 - **setuptools**: For packaging support.
 
 ### Python dependencies
