@@ -1,9 +1,11 @@
 '''
 Created on Aug 24, 2020
+Edited on 01/11/2025
 
 @author: Hosein Hadipour
 @contact: hsn.hadipour@gmail.com
 '''
+from core.graphdrawer import draw_graph
 
 def parse_solver_solution(gd):
         """
@@ -22,14 +24,19 @@ def parse_solver_solution(gd):
         temp = [v for v in gd.variables if v ]
         print('Number of known variables in the final state: %d out of %d' % (
             gd.final_info, len(gd.variables)))
-        print('The following %d variable(s) are guessed:' %
-              len(gd.guessed_vars))
+        # print('The following %d variable(s) are guessed:' %
+        #       len(gd.guessed_vars))
         # print(', '.join(gd.guessed_vars))
-        for v in gd.guessed_vars:
-            if hasattr(gd, "dummy_mapping") and v in gd.dummy_mapping:
-                print(f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})")
-            else:
-                print(v)
+        if hasattr(gd, "dummy_mapping"):
+            guessed_vars_pretty = []
+            for v in gd.guessed_vars:
+                if v in gd.dummy_mapping:
+                    guessed_vars_pretty.append(f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})")
+                else:
+                    guessed_vars_pretty.append(v)
+            print(f"The following {len(gd.guessed_vars)} variable(s) are guessed:\n{', '.join(guessed_vars_pretty)}")
+        else:
+            print(f"The following {len(gd.guessed_vars)} variable(s) are guessed:\n{', '.join(gd.guessed_vars)}")
         separator_line = ''.join(['#']*60)
         output_buffer = ''
         output_buffer += 'Number of relations: %d\n' % gd.num_of_relations
@@ -47,12 +54,19 @@ def parse_solver_solution(gd):
         output_buffer += separator_line
         # output_buffer += '\nThe following %d variable(s) are guessed:\n%s\n' % (
         #     len(gd.guessed_vars), ', '.join(gd.guessed_vars))
-        output_buffer += '\nThe following %d variable(s) are guessed:\n' % len(gd.guessed_vars)
+        # output_buffer += '\nThe following %d variable(s) are guessed:\n' % len(gd.guessed_vars)
+        # for v in gd.guessed_vars:
+        #     if hasattr(gd, "dummy_mapping") and v in gd.dummy_mapping:
+        #         output_buffer += f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})\n"
+        #     else:
+        #         output_buffer += f"{v}\n"
+        guessed_vars_pretty = []
         for v in gd.guessed_vars:
             if hasattr(gd, "dummy_mapping") and v in gd.dummy_mapping:
-                output_buffer += f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})\n"
+                guessed_vars_pretty.append(f"{v} (represents: {' * '.join(gd.dummy_mapping[v])})")
             else:
-                output_buffer += f"{v}\n"
+                guessed_vars_pretty.append(v)
+        output_buffer += f"\nThe following {len(gd.guessed_vars)} variable(s) are guessed:\n{', '.join(guessed_vars_pretty)}\n"
         output_buffer += separator_line
         output_buffer += '\nThe following %d variable(s) are initially known:\n%s\n' % (
             len(gd.known_variables), ', '.join(gd.known_variables))
@@ -135,5 +149,19 @@ def parse_solver_solution(gd):
         for v in gd.variables:
             if variables_deductor_relations[v]['number_of_deductions'] > 1:
                 output_buffer += '\n%s can be deduced from:\n%s\n' % (v, '\n'.join(variables_deductor_relations[v]['deductor_relations']))
-        with open(gd.output_dir, 'w') as outputfile_obj:
-            outputfile_obj.write(output_buffer)
+        
+        # try:
+        #     draw_graph(
+        #         gd.vertices,
+        #         gd.edges,
+        #         gd.known_variables,
+        #         gd.guessed_vars,
+        #         gd.output_dir,     # This will be the base name for the .pdf and .tex
+        #         tikz=0,            # Set to 1 to generate TikZ .tex file too
+        #         dglayout='dot'     # Graphviz layout engine (dot, neato, etc.)
+        #     )
+        #     print(" Determination flow graph generated.")
+        # except Exception as e:
+        #     print(" Failed to generate graph:", e)
+        # with open(gd.output_dir, 'w') as outputfile_obj:
+        #     outputfile_obj.write(output_buffer)
