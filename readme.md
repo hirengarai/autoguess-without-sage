@@ -132,30 +132,27 @@ python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solv
 
 ```bash
 OR Tools is available
-Preprocessing phase was started - 2025-07-25 21:51:59.918078
-Algebrize input polynomials done in 0.0138 seconds
-The 4 variables are [X4, X3, X2, X1]
+Preprocessing phase was started - 2025-11-01 00:29:08.364541
 Number of algebraic equations: 7
 Number of algebraic variables: 4
 Number of algebraic monomials: 11
 Spectrum of degrees: [2]
-Build macaulay polynomials done in 0.0023 seconds
-Macaulay matrix was generated in 0.0067 seconds
-The matrix is of dimension: 7×11 over GF(2)
+Macaulay matrix was generated in full matrixspace of 7 by 11 sparse matrices over finite field of size 2
+Gaussian elimination started - 2025-11-01 00:29:08.870502
 #Dependent variables: 7
 #Free variables: 3
-Gaussian elimination was finished after 0.2342 seconds
-Result was written into temp/macaulay_basis_0c540ac5b7d8ddf5ac0b2908dcdc51.txt after 0.0002 seconds
-Preprocessing phase was finished after 0.7222 seconds
+Gaussian elimination was finished after 0.2548 seconds
+Result written to temp/macaulay_basis_f589f77fd1ad8bf0de119507f00cfe.txt in 0.0002 seconds
+Preprocessing phase was finished after 0.8152 seconds
 Number of guessed variables is set to be at most 10
 Generating the CP model ...
-CP model was generated after 0.00 seconds
+CP model was generated after 0.01 seconds
 Solving the CP model with cp-sat ...
-Solving process was finished after 0.35 seconds
+Solving process was finished after 0.31 seconds
 Number of guesses: 2
 Number of known variables in the final state: 10 out of 10
-The following 2 variable(s) are guessed:
-X2, VLAK01
+The following 2 variable(s) are guessed: 
+X4, RKKK13 (represents: X2 * X4)
 ```
 
 You can choose specific solver also e.g. cbc (coin-bc)
@@ -166,30 +163,27 @@ python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solv
 
 ```bash
 OR Tools is available
-Preprocessing phase was started - 2025-07-25 22:54:32.651040
-Algebrize input polynomials done in 0.0139 seconds
-The 4 variables are [X4, X3, X2, X1]
+Preprocessing phase was started - 2025-11-01 00:32:39.110815
 Number of algebraic equations: 7
 Number of algebraic variables: 4
 Number of algebraic monomials: 11
 Spectrum of degrees: [2]
-Build macaulay polynomials done in 0.0024 seconds
-Macaulay matrix was generated in 0.0070 seconds
-The matrix is of dimension: 7×11 over GF(2)
+Macaulay matrix was generated in full matrixspace of 7 by 11 sparse matrices over finite field of size 2
+Gaussian elimination started - 2025-11-01 00:32:39.446340
 #Dependent variables: 7
 #Free variables: 3
-Gaussian elimination was finished after 0.2562 seconds
-Result was written into temp/macaulay_basis_2cc116aa956a34b857c3eaea3bbb4d.txt after 0.0002 seconds
-Preprocessing phase was finished after 0.9287 seconds
+Gaussian elimination was finished after 0.2443 seconds
+Result written to temp/macaulay_basis_d29165f9726d47fb001886e495d8ba.txt in 0.0002 seconds
+Preprocessing phase was finished after 0.6315 seconds
 Number of guessed variables is set to be at most 10
 Generating the CP model ...
-CP model was generated after 0.00 seconds
-Solving the CP model with cbc ...
-Solving process was finished after 3.73 seconds
+CP model was generated after 0.01 seconds
+Solving the CP model with cp-sat ...
+Solving process was finished after 0.31 seconds
 Number of guesses: 2
 Number of known variables in the final state: 10 out of 10
 The following 2 variable(s) are guessed:
-X4, X2
+X4, PNEM13 (represents: X2 * X4)
 ```
 
 The available cp solvers depends on the installation. Extra solvers you have to install.
@@ -203,20 +197,18 @@ python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solv
 ### Terminal output
 
 ```bash
-Preprocessing phase was started - 2025-07-25 23:01:09.528164
-Algebrize input polynomials done in 0.0145 seconds
+Preprocessing phase was started - 2025-11-01 00:31:41.505979
 Number of algebraic equations: 7
 Number of algebraic variables: 4
 Number of algebraic monomials: 11
 Spectrum of degrees: [2]
-Build macaulay polynomials done in 0.0025 seconds
-Macaulay matrix was generated in 0.0208 seconds
-The matrix is of dimension: 35×15 over GF(2)
+Macaulay matrix was generated in full matrixspace of 35 by 15 sparse matrices over finite field of size 2
+Gaussian elimination started - 2025-11-01 00:31:41.872879
 #Dependent variables: 13
 #Free variables: 1
-Gaussian elimination was finished after 0.2457 seconds
-Result was written into temp/macaulay_basis_f4641b999ca9bebe2058028be7a8ad.txt after 0.0002 seconds
-Preprocessing phase was finished after 0.9527 seconds
+Gaussian elimination was finished after 0.2504 seconds
+Result written to temp/macaulay_basis_b9524db9f1e0f58b6bb9ad0c3f96d1.txt in 0.0002 seconds
+Preprocessing phase was finished after 0.6717 seconds
 Generating the SAT model ...
 SAT model was generated after 0.00 seconds
 
@@ -226,6 +218,7 @@ Number of guesses: 1
 Number of known variables in the final state: 14 out of 14
 The following 1 variable(s) are guessed:
 X3
+
 ```
 
 ### SMT
@@ -292,7 +285,7 @@ k_26_0, k_26_2, k_5_23, k_6_67, k_7_5, k_7_7, k_7_13, k_7_72, k_8_8, k_8_9, k_8_
 
 
 ### To Do
-- MILP, Gröbner basis method is not supported
+- Gröbner basis method is not supported.
 - The preprocessing phase for long systems is quite a bit slow (e.g. in the PRESENT)
 
 
