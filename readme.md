@@ -42,6 +42,9 @@ pysmt-install --z3   # Still needed separately to install Z3 backend
 
 # 5. Galois includes numpy, so no need to install numpy separately
 pip install galois
+
+#6. Install gurobipy
+pip install gurobipy
 ```
 
 ### Defaults
