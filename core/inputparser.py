@@ -1,5 +1,6 @@
 '''
 Created on Feb 6, 2021
+Edited on 01/11/2025
 
 @author: Hosein Hadipour
 @contact: hsn.hadipour@gmail.com
@@ -41,12 +42,15 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
             with open(path, 'r') as fileobj:
                 contents = fileobj.read()
     except (TypeError, ValueError):
-        pass
+        print(f"File at {path} could not be read or is empty.")
 
+    if contents is None:
+        raise ValueError(f"File at {path} could not be read or is empty.")
     contents = contents.strip()
     problem_name = find_problem_name(contents)
     sections = split_contents_by_sections(remove_comments(contents))
 
+    dummy_mapping = {}
     connection_relations = sections.get('connection relations', '')
     algebraic_relations = sections.get('algebraic relations', '')
     algebraic_equations_file = os.path.join(TEMP_DIR, 'algebraic_equations_%s.txt' % rnd_string_tmp)
@@ -54,19 +58,18 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
         with open(algebraic_equations_file, 'w') as equations_file:
             equations_file.write(algebraic_relations)
         starting_time = time.time()
-        print('Preprocessing phase started - %s' % datetime.now())
+        print('Preprocessing phase was started - %s' % datetime.now())
         macaulay_basis_file = os.path.join(TEMP_DIR, 'macaulay_basis_%s.txt' % rnd_string_tmp)
-        sage_process = subprocess.call([PATH_SAGE, os.path.join("core", "macaulay.py"), 
-                                        "-i", algebraic_equations_file,
-                                        "-o", macaulay_basis_file,
-                                        "-t", "degrevlex",
-                                        "-D", str(D)])
+        subprocess.call([PATH_SAGE, os.path.join("core", "macaulay.py"), 
+                         "-i", algebraic_equations_file,
+                         "-o", macaulay_basis_file,
+                         "-t", "degrevlex",
+                         "-D", str(D)])
         elapsed_time = time.time() - starting_time
-        print('Preprocessing phase finished after %0.4f seconds' % elapsed_time)
+        print('Preprocessing phase was finished after %0.4f seconds' % elapsed_time)
         try:
             with open(macaulay_basis_file, 'r') as groebner_basis_file:
                 groebner_basis = groebner_basis_file.read()
-                temp = groebner_basis_file.readlines()[0:-2]
         except IOError:
             print(macaulay_basis_file + ' is not accessible!')
             sys.exit()
@@ -75,12 +78,14 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
         if connection_relations == '':
             connection_relations, dummy_mapping = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
         else:
-            connection_relations += '\n' + algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
+            cr, dummy_mapping = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
+            connection_relations += '\n' + cr
     elif algebraic_relations != '' and preprocess == 0:
         if connection_relations == '':
             connection_relations, dummy_mapping = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
         else:
-            connection_relations += '\n' + algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
+            cr, dummy_mapping = algebraic_relations_to_connection_relations(algebraic_relations.split('\n'))
+            connection_relations += '\n' + cr
     symmetric_relations, implication_relations, variables = parse_connection_relations(connection_relations)
     known_variables = sections.get('known', [])
     if known_variables != []:
@@ -143,7 +148,6 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
     return parsed_data
 
 
-
 def find_problem_name(contents):
     """
     Find the name of the problem by reading the first comments if it exists.
@@ -181,16 +185,14 @@ def split_contents_by_sections(contents):
 
     for section_name, keywords in keywords.items():
         try:
-            match, keyword_start, keyword_end = search_keywords(
-                contents, keywords)
-            sections.append(Section(section_name.lower(),
-                                    keyword_start, keyword_end))
+            match, keyword_start, keyword_end = search_keywords(contents, keywords)
+            sections.append(Section(section_name.lower(),keyword_start, keyword_end))
         except AttributeError:
             pass
     # sort by the start index of the section
     sections.sort(key=lambda x: x.keyword_start)
 
-    if sections[-1].name != 'end':
+    if not sections or sections[-1].name != 'end':
         raise ValueError('File must end with an "end" keyword')
 
     parsed_sections = {}
@@ -209,8 +211,7 @@ def search_keywords(contents, keywords):
     Raises ValueError when none of the keywords is found in the contents
     """
 
-    sense_pattern = re.compile(
-        '|'.join(rf'\b{re.escape(keyword)}\b' for keyword in keywords), re.IGNORECASE)
+    sense_pattern = re.compile('|'.join(rf'\b{re.escape(keyword)}\b' for keyword in keywords), re.IGNORECASE)
     match = sense_pattern.search(contents)
     return match.group(), match.start(), match.end()
 
@@ -219,8 +220,7 @@ def remove_comments(contents):
     Remove the comments from the contents
     """
     
-    contents = re.sub(re.compile(r"#.*?\n", re.DOTALL), "",
-                      contents)  # remove all occurrences of #COMMENT from line
+    contents = re.sub(re.compile(r"#.*?\n", re.DOTALL), "", contents)  # remove all occurrences of #COMMENT from line
     return contents
 
 def parse_connection_relations(connection_relations):
@@ -306,33 +306,70 @@ def degree_of_monomial(monomial):
     vars = get_variables_from_monomial(monomial)
     return len(vars)
 
+# def algebraic_relations_to_connection_relations(algebraic_relations):
+#     """
+#     Generate the connection relations derived from the given algebraic relations by introducing new variables
+#     It currently work for boolean polynomial relations merely
+#     """
+
+#     connection_relations = []
+#     if algebraic_relations[-1] == '':
+#         algebraic_relations[-1:] = []
+#     algebraic_relations = [poly.replace(' ', '') for poly in algebraic_relations]
+#     all_monomials = get_monomials_from_list_of_polys(algebraic_relations)
+#     algebraic_variables = get_variables_from_list_of_monomials(all_monomials)
+#     dummy_vars_prefix = random_prefix_generator(4)
+#     substitution_dictionary = dict()
+#     for monomial in all_monomials:
+#         if degree_of_monomial(monomial) >= 2:
+#             monomial_variables = get_variables_from_monomial(monomial)
+#             var_indices = [algebraic_variables.index(x) for x in monomial_variables]
+#             var_indices = list(map(str, var_indices))
+#             dummy_var = "{0}{1}".format(dummy_vars_prefix, "".join(var_indices))
+#             if dummy_var not in substitution_dictionary.values():
+#                 connection_relations.append("{0}=>{1}".format(",".join(monomial_variables), dummy_var))
+#             substitution_dictionary[monomial] = dummy_var
+
+#     for poly in algebraic_relations:
+#         linearized_relation = [substitution_dictionary.get(term, term) for term in poly.split("+")]
+#         if '1' in linearized_relation:
+#             linearized_relation.remove('1')
+#         if '0' in linearized_relation:
+#             linearized_relation.remove('0')
+#         connection_relations.append(",".join(linearized_relation))
+#     return "\n".join(connection_relations)
+
 def algebraic_relations_to_connection_relations(algebraic_relations):
     """
-    Generate the connection relations derived from the given algebraic relations by introducing new variables
-    It currently work for boolean polynomial relations merely
+    Generate the connection relations derived from the given algebraic relations by introducing new variables.
+    Also creates a mapping from dummy variables to original monomials.
+    Returns:
+        connection_relations_str: string of relations
+        dummy_mapping: dictionary {dummy_var: [original variables]}
     """
-
     connection_relations = []
     dummy_mapping = dict()
+
     if algebraic_relations[-1] == '':
         algebraic_relations[-1:] = []
     algebraic_relations = [poly.replace(' ', '') for poly in algebraic_relations]
+
     all_monomials = get_monomials_from_list_of_polys(algebraic_relations)
     algebraic_variables = get_variables_from_list_of_monomials(all_monomials)
     dummy_vars_prefix = random_prefix_generator(4)
     substitution_dictionary = dict()
+
     for monomial in all_monomials:
         if degree_of_monomial(monomial) >= 2:
             monomial_variables = get_variables_from_monomial(monomial)
-            var_indices = [algebraic_variables.index(
-                x) for x in monomial_variables]
+            var_indices = [algebraic_variables.index(x) for x in monomial_variables]
             var_indices = list(map(str, var_indices))
-            dummy_var = "{0}{1}".format(
-                dummy_vars_prefix, "".join(var_indices))
+            dummy_var = "{0}{1}".format(dummy_vars_prefix, "".join(var_indices))
+
             if dummy_var not in substitution_dictionary.values():
-                connection_relations.append("{0}=>{1}".format(
-                    ",".join(monomial_variables), dummy_var))
-                dummy_mapping[dummy_var] = monomial_variables
+                connection_relations.append("{0}=>{1}".format(",".join(monomial_variables), dummy_var))
+                dummy_mapping[dummy_var] = monomial_variables  # Record dummy → original vars
+
             substitution_dictionary[monomial] = dummy_var
 
     for poly in algebraic_relations:
