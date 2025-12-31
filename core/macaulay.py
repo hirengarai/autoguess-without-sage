@@ -1,14 +1,30 @@
 import time
 import sys
+import re
 from datetime import datetime
 from argparse import ArgumentParser, RawTextHelpFormatter
 from itertools import combinations
 
 
 import numpy as np
-# sys.path.insert(0, "/home/tools/autoguess/venv/lib/python3.11/site-packages")
-import galois
-from gf2poly import parse, GF2Poly
+# Handle both direct execution and module import
+try:
+    from .gf2poly import parse_gf2poly, GF2Poly, rref_gf2_u64, validate_packed_gf2_u64
+except ImportError:
+    from gf2poly import parse_gf2poly, GF2Poly, rref_gf2_u64, validate_packed_gf2_u64
+
+def first_seen_var_names(lines):
+    """
+    Order the variables as per seen first
+    """
+    seen = set()
+    ordered = []
+    for line in lines:
+        for name in re.findall(r"[A-Za-z_]\w*", line):
+            if name not in seen:
+                seen.add(name)
+                ordered.append(name)
+    return ordered
 
 
 def poly_degree(poly: GF2Poly) -> int:
@@ -21,7 +37,49 @@ def poly_degree(poly: GF2Poly) -> int:
         return 0
     return max(len(mono) for mono in poly.monomials)
 
+
+def _pack_bits_to_uint64(mat: np.ndarray) -> tuple[np.ndarray, int]:
+    """
+    Pack a binary matrix into uint64 words (little-endian bit order).
+
+    Returns (packed_matrix, original_ncols).
+    """
+    rows, cols = mat.shape
+    nwords = (cols + 63) // 64
+    padded_cols = nwords * 64
+    if padded_cols != cols:
+        pad = np.zeros((rows, padded_cols - cols), dtype=np.uint8)
+        mat = np.concatenate([mat, pad], axis=1)
+
+    packed = np.packbits(mat, axis=1, bitorder="little")
+    packed = np.ascontiguousarray(packed)
+    return packed.view(np.uint64), cols
+
+
+def _pivot_columns_from_packed(mat: np.ndarray, ncols: int) -> list[int]:
+    """
+    Extract pivot column indices from a packed RREF matrix.
+    """
+    pivots: list[int] = []
+    for row in mat:
+        for w, word in enumerate(row):
+            word_int = int(word)
+            if word_int:
+                lsb = word_int & -word_int
+                bit = lsb.bit_length() - 1
+                col = w * 64 + bit
+                if col < ncols:
+                    pivots.append(col)
+                break
+    return pivots
+
 class Macaulay:
+    """
+    Given a set of Boolean polynomials and a positive integer D, as well as a monomial ordering, 
+    this class performs two main tasks:
+    1- Constructing the Macaulay matrix of degree D
+    2- Computing the reduced row echelon form of the derived Macaulay matrix
+    """
     
     count = 0
     
@@ -44,20 +102,19 @@ class Macaulay:
             sys.exit(1)
         
         # 1) Parse each algebraic relation into GF2Poly
-        self.polynomials = [parse(line) for line in lines]  # list of GF2Poly
+        self.polynomials = [parse_gf2poly(line) for line in lines]  # list of GF2Poly
 
         # 2) Collect all variable names from monomials
         vars_set = set()
         for poly in self.polynomials:
             for mono in poly.monomials:    # mono is a frozenset of var-names
                 vars_set.update(mono)
-        self.variable_names = sorted(vars_set)  # e.g. ['x0','x1','x2',…]
+        self.variable_names = first_seen_var_names(lines)
     
     
     def build_macaulay_polynomials(self):
         """
-        Constructs the Macaulay polynomials (all in GF2Poly form)
-        of total degree ≤ D, given the input GF2Polys in self.polynomials.
+        Constructs the Macaulay polynomials with degree at most D corresponding to the given boolean polynomial sequence
         """
 
         # 1) Prepare
@@ -124,7 +181,7 @@ class Macaulay:
         else:
             self.macaulay_polynomials = list(self.polynomials)
 
-        # 2) Collect & sort all monomials (as exponent‐tuples) in graded-lex order
+        # 2) Collect & sort all monomials (as exponent‐tuples) according to term ordering
         var_names = self.variable_names
         exps = set()
         for poly in self.macaulay_polynomials:
@@ -132,8 +189,14 @@ class Macaulay:
                 # mono is frozenset of var‐names → build an exp tuple
                 exps.add(tuple(1 if v in mono else 0 for v in var_names))
 
-        # graded-lex: by total degree, then lex tuple, descending
-        self.mons = sorted(exps, key=lambda e: (sum(e), e), reverse=True)
+        # Apply the chosen term ordering
+        if self.term_ordering == 'degrevlex':
+            # Degree reverse lexicographic: by total degree (descending), then reverse lex (descending)
+            self.mons = sorted(exps, key=lambda e: (sum(e), tuple(reversed(e))), reverse=True)
+        else:  # 'deglex' or default
+            # Degree lexicographic: by total degree (descending), then lex (descending)
+            self.mons = sorted(exps, key=lambda e: (sum(e), e), reverse=True)
+
         col_index = {exp: i for i, exp in enumerate(self.mons)}
 
 
@@ -152,34 +215,35 @@ class Macaulay:
 
     def gaussian_elimination(self):
         """
-        Perform RREF on GF(2) matrix using galois, and manually compute pivots.
+        Perform RREF on a packed GF(2) matrix and compute pivot columns.
         """
         print('Gaussian elimination started - %s' % datetime.now())
-        t0 = time.time()
-        GF2 = galois.GF(2)
-        A = GF2(self.macaulay_matrix)
-        
-        self.R = A.row_reduce()
-        
-        # convert to numpy to inspect bit patterns
-        R_np = np.array(self.R, dtype=np.uint8)
+        packed, ncols = _pack_bits_to_uint64(self.macaulay_matrix)
+        validate_packed_gf2_u64(packed, ncols)
+        # Warm up JIT so timing reflects steady-state performance
+        rref_gf2_u64(packed.copy())
 
-        pivots = [int(np.nonzero(R_np[i])[0][0])
-                for i in range(R_np.shape[0])
-                if R_np[i].any()]
+        t0 = time.time()
+        packed, ncols = _pack_bits_to_uint64(self.macaulay_matrix)
+        validate_packed_gf2_u64(packed, ncols)
+        rref_gf2_u64(packed)
+
+        pivots = _pivot_columns_from_packed(packed, ncols)
+
+        # Unpack for downstream use (e.g., write_result)
+        unpacked = np.unpackbits(packed.view(np.uint8), axis=1, bitorder="little")
+        self.R = unpacked[:, :ncols].astype(np.uint8, copy=False)
         
         def is_constant(mono):
             return all(e == 0 for e in mono)
-        
 
         # Exclude constant monomial from free/dependent count
         self.dependent = [m for j, m in enumerate(self.mons) if j in pivots and not is_constant(m)]
         self.free = [m for j, m in enumerate(self.mons) if j not in pivots and not is_constant(m)]
 
-
-        elapsed = time.time() - t0
         print(f"#Dependent variables: {len(self.dependent)}")
         print(f"#Free variables: {len(self.free)}")
+        elapsed = time.time() - t0
         print(f"Gaussian elimination was finished after {elapsed:.4f} seconds")
     
     def write_result(self):
@@ -188,6 +252,7 @@ class Macaulay:
         using variable names in self.variable_names and monomials in self.mons.
         Also prints each equation to the console.
         """
+        print('Writing the results into the %s - %s' % (self.outputfile, datetime.now()))
         t0 = time.time()
         try:
             with open(self.outputfile, 'w') as outf:
@@ -219,7 +284,7 @@ class Macaulay:
             sys.exit(1)
 
         elapsed = time.time() - t0
-        print(f"Result written to {self.outputfile} in {elapsed:.4f} seconds")
+        print(f"Result was written into {self.outputfile} after {elapsed:.2f} seconds")
     
 def loadparameters(args):
     """

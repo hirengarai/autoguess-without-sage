@@ -34,6 +34,7 @@ SOFTWARE.
 from core import search
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
+import sys
 from config import TEMP_DIR
 
 def startsearch(tool_parameters):
@@ -51,7 +52,8 @@ def startsearch(tool_parameters):
     elif tool_parameters["solver"] == 'cp':
         search.search_using_cp(tool_parameters)
     elif tool_parameters["solver"] == 'groebner':
-        search.search_using_groebnerbasis(tool_parameters)
+        print("[ERROR] Groebner solver is unavailable in autoguess-without-sage. Use sat, milp, cp, or smt instead.")
+        sys.exit(1)
     elif tool_parameters["solver"] == 'mark':
         search.search_using_mark(tool_parameters)
     elif tool_parameters["solver"] == 'elim':

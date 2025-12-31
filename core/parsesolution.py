@@ -150,18 +150,24 @@ def parse_solver_solution(gd):
             if variables_deductor_relations[v]['number_of_deductions'] > 1:
                 output_buffer += '\n%s can be deduced from:\n%s\n' % (v, '\n'.join(variables_deductor_relations[v]['deductor_relations']))
         
-        # try:
-        #     draw_graph(
-        #         gd.vertices,
-        #         gd.edges,
-        #         gd.known_variables,
-        #         gd.guessed_vars,
-        #         gd.output_dir,     # This will be the base name for the .pdf and .tex
-        #         tikz=0,            # Set to 1 to generate TikZ .tex file too
-        #         dglayout='dot'     # Graphviz layout engine (dot, neato, etc.)
-        #     )
-        #     print(" Determination flow graph generated.")
-        # except Exception as e:
-        #     print(" Failed to generate graph:", e)
-        # with open(gd.output_dir, 'w') as outputfile_obj:
-        #     outputfile_obj.write(output_buffer)
+        try:
+            tikz_param = gd.tikz if hasattr(gd, 'tikz') else 0
+            draw_graph(
+                gd.vertices,
+                gd.edges,
+                gd.known_variables,
+                gd.guessed_vars,
+                gd.output_dir,
+                tikz=tikz_param,
+                dglayout=gd.dglayout if hasattr(gd, 'dglayout') else 'dot'
+            )
+            graph_pdf = f"{gd.output_dir}_graph.pdf"
+            print(f"Determination flow graph saved to {graph_pdf}")
+            if tikz_param == 1:
+                graph_tex = f"{gd.output_dir}_graph.tex"
+                print(f"TikZ LaTeX code saved to {graph_tex}")
+        except Exception as e:
+            print(f"Warning: Failed to generate graph: {e}")
+
+        with open(gd.output_dir, 'w') as outputfile_obj:
+            outputfile_obj.write(output_buffer)

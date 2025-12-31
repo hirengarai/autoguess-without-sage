@@ -4,7 +4,7 @@ import numpy as np
 import numba as nb
 
 @nb.njit(parallel=True)
-def rref_gf2_uint64(mat: np.ndarray) -> int:
+def rref_gf2_u64(mat: np.ndarray) -> int:
     """
     In-place Gauss-Jordan elimination (RREF) over GF(2) for a matrix stored as uint64 words.
 
@@ -38,6 +38,27 @@ def rref_gf2_uint64(mat: np.ndarray) -> int:
     return pivot
 
 
+def validate_packed_gf2_u64(mat: np.ndarray, ncols: int) -> None:
+    """
+    Validate a bit-packed GF(2) matrix before elimination.
+    """
+    if ncols < 0:
+        raise ValueError("ncols must be non-negative")
+    if mat.dtype != np.uint64:
+        raise TypeError("mat must be a uint64 array")
+    if not mat.flags["C_CONTIGUOUS"]:
+        raise ValueError("mat must be C-contiguous")
+
+    rem = ncols % 64
+    if rem == 0:
+        return
+
+    last_word = (ncols // 64)
+    mask = np.uint64(0xFFFFFFFFFFFFFFFF) << np.uint64(rem)
+    if np.any(mat[:, last_word] & mask):
+        raise ValueError("padding bits must be zero")
+
+
 class GF2Poly:
     """
     Polynomial over GF(2) with idempotent variables (x^2 = x).
@@ -46,20 +67,20 @@ class GF2Poly:
     Each monomial is represented as a frozenset of variable names.
     """
 
-    def __init__(self, monomials: Iterable[FrozenSet[str]] = ()):  # noqa: D107
+    def __init__(self, monomials: Iterable[FrozenSet[str]] = ()): 
         # Initialize the polynomial with given monomials (each a frozenset).
         self.monomials: Set[FrozenSet[str]] = set(monomials)
 
-    def __xor__(self, other: "GF2Poly") -> "GF2Poly":  # noqa: D105
+    def __xor__(self, other: "GF2Poly") -> "GF2Poly":
         """
         Add two polynomials over GF(2) (XOR): symmetric difference of monomial sets.
         """
         return GF2Poly(self.monomials ^ other.monomials)
 
     # Alias '+' operator to XOR behavior
-    __add__ = __xor__  # noqa: E704
+    __add__ = __xor__ 
 
-    def __mul__(self, other: "GF2Poly") -> "GF2Poly":  # noqa: D105
+    def __mul__(self, other: "GF2Poly") -> "GF2Poly":
         """
         Multiply two polynomials over GF(2):
         For each pair of monomials, merge variable sets (idempotent union),
@@ -76,13 +97,13 @@ class GF2Poly:
                     out.add(merged)
         return GF2Poly(out)
 
-    def __bool__(self) -> bool:  # noqa: D105
+    def __bool__(self) -> bool:
         """
         Truth value of the polynomial: False if zero (no monomials), True otherwise.
         """
         return bool(self.monomials)
 
-    def __str__(self) -> str:  # noqa: D105
+    def __str__(self) -> str:
         """
         Human-readable string: monomials sorted by degree then lexically,
         joined by ' + '.  Empty polynomial prints '0'.
@@ -102,7 +123,7 @@ class GF2Poly:
         return " + ".join(parts)
 
     # Use the same string for repr in REPL/debug
-    __repr__ = __str__  # noqa: E305
+    __repr__ = __str__ 
 
 
 def var(name: str) -> GF2Poly:
@@ -125,7 +146,7 @@ def const(bit: int) -> GF2Poly:
 # ---------------------------------------------------------------------
 _token = re.compile(r'\s*([A-Za-z_]\w*|\d+|\^|\*|\+|\(|\))')
 
-def parse(text: str) -> GF2Poly:
+def parse_gf2poly(text: str) -> GF2Poly:
     """
     Parse an expression like "x*(x^4 + 1)" into a GF2Poly.
     Exponents are ignored (x^k -> x), and idempotence (x^2 = x) holds.

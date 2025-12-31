@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+temp/
+output
+output_graph.pdf
+jupyter/output_*.txt

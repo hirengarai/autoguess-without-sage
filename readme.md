@@ -27,25 +27,31 @@ source myenv/bin/activate
 Install the required Python packages via `pip`:
 
 ```bash
-# 1. Core package manager fix (usually already present)
+#1. Core package manager fix (usually already present)
 pip install --upgrade pip setuptools wheel
 
-# 2. Install MiniZinc Python interface
+#2. Install MiniZinc Python interface
 pip install minizinc
 
-# 3. Install PySAT with optional solvers
+#3. Install PySAT with optional solvers
 pip install 'python-sat[pblib,aiger]'
 
-# 4. Install PySMT
+#4. Install PySMT
 pip install pysmt
 pysmt-install --z3   # Still needed separately to install Z3 backend
 
 
-# 5. Galois includes numpy, so no need to install numpy separately
+#5. Galois includes numpy, so no need to install numpy separately
 pip install galois
 
 #6. Install gurobipy
 pip install gurobipy
+
+#7. Install graphviz
+pip install graphviz
+
+#8. Install dot2tex (tikz)
+pip install dot2tex
 ```
 
 ### Defaults
