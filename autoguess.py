@@ -52,7 +52,7 @@ def startsearch(tool_parameters):
     elif tool_parameters["solver"] == 'cp':
         search.search_using_cp(tool_parameters)
     elif tool_parameters["solver"] == 'groebner':
-        print("[ERROR] Groebner solver is unavailable in autoguess-without-sage. Use sat, milp, cp, or smt instead.")
+        print("[ERROR] Groebner solver is unavailable in this version. Use sat, milp, cp, or smt instead.")
         sys.exit(1)
     elif tool_parameters["solver"] == 'mark':
         search.search_using_mark(tool_parameters)

@@ -306,38 +306,6 @@ def degree_of_monomial(monomial):
     vars = get_variables_from_monomial(monomial)
     return len(vars)
 
-# def algebraic_relations_to_connection_relations(algebraic_relations):
-#     """
-#     Generate the connection relations derived from the given algebraic relations by introducing new variables
-#     It currently work for boolean polynomial relations merely
-#     """
-
-#     connection_relations = []
-#     if algebraic_relations[-1] == '':
-#         algebraic_relations[-1:] = []
-#     algebraic_relations = [poly.replace(' ', '') for poly in algebraic_relations]
-#     all_monomials = get_monomials_from_list_of_polys(algebraic_relations)
-#     algebraic_variables = get_variables_from_list_of_monomials(all_monomials)
-#     dummy_vars_prefix = random_prefix_generator(4)
-#     substitution_dictionary = dict()
-#     for monomial in all_monomials:
-#         if degree_of_monomial(monomial) >= 2:
-#             monomial_variables = get_variables_from_monomial(monomial)
-#             var_indices = [algebraic_variables.index(x) for x in monomial_variables]
-#             var_indices = list(map(str, var_indices))
-#             dummy_var = "{0}{1}".format(dummy_vars_prefix, "".join(var_indices))
-#             if dummy_var not in substitution_dictionary.values():
-#                 connection_relations.append("{0}=>{1}".format(",".join(monomial_variables), dummy_var))
-#             substitution_dictionary[monomial] = dummy_var
-
-#     for poly in algebraic_relations:
-#         linearized_relation = [substitution_dictionary.get(term, term) for term in poly.split("+")]
-#         if '1' in linearized_relation:
-#             linearized_relation.remove('1')
-#         if '0' in linearized_relation:
-#             linearized_relation.remove('0')
-#         connection_relations.append(",".join(linearized_relation))
-#     return "\n".join(connection_relations)
 
 def algebraic_relations_to_connection_relations(algebraic_relations):
     """

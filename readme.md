@@ -348,7 +348,7 @@ X3
 ### CP
 
 ```bash
-python3 autoguess.py --inputfile ciphers/PRESENT/relationfile.txt --solver cp --preprocess 1 --D 2 --maxguess 60 --maxsteps 10
+python3 autoguess.py --inputfile ciphers/PRESENT/relationfile_present_kb_26r_mg60_ms10.txt --solver cp --preprocess 1 --D 2 --maxguess 60 --maxsteps 10
 ```
 
 ### Terminal output
@@ -371,10 +371,3 @@ Number of known variables in the final state: 1391 out of 2160
 The following 60 variable(s) are guessed:
 k_26_0, k_26_2, k_5_23, k_6_67, k_7_5, k_7_7, k_7_13, k_7_72, k_8_8, k_8_9, k_8_10, k_8_23, k_12_12, k_12_76, k_13_11, k_13_48, k_13_49, k_14_28, k_14_65, k_15_14, k_15_46, k_15_50, k_15_51, k_15_73, k_16_10, k_16_13, k_16_74, k_17_6, k_17_58, k_18_29, k_18_49, k_19_35, k_19_66, k_20_50, k_21_37, k_21_71, k_21_77, k_22_31, k_22_41, k_22_48, k_22_53, k_23_10, k_23_37, k_23_49, k_23_52, k_23_57, k_23_58, k_23_73, k_24_13, k_24_20, k_24_24, k_24_37, k_24_39, k_24_52, k_24_78, k_25_9, k_25_38, k_26_59, k_26_60, k_26_61
 ```
-
-
-### To Do
-- Gröbner basis method is not supported.
-- The preprocessing phase for long systems is quite a bit slow (e.g. in the PRESENT)
-
-

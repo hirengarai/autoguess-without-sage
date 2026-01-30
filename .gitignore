@@ -6,3 +6,4 @@ temp/
 output
 output_graph.pdf
 jupyter/output_*.txt
+env312/
