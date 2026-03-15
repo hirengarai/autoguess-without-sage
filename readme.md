@@ -21,6 +21,7 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
     - [Python Setup](#python-setup)
     - [Optional Dependencies](#optional-dependencies)
   - [Example 1](#example-1)
+  - [***CP***](#cp)
   - [Input File Format](#input-file-format)
   - [Command Line Reference](#command-line-reference)
   - [Examples](#examples)
@@ -94,7 +95,7 @@ pip install gurobipy
 ## Example 1
 Find a minimal guess basis for Example1 using CP
 
-*## CP*
+## ***CP***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver cp --maxsteps 5 --dglayout circo
 ```
@@ -118,7 +119,8 @@ Guessed variable(s) (2):
   v, u
 ============================================================
 ```
-*## SAT*
+Using SAT solver
+##*** SAT***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --maxguess 2 --maxsteps 5
 ```
@@ -150,6 +152,7 @@ Guessed variable(s) (2):
   x, s
 ============================================================
 ```
+Using ```--findmin```
 
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --findmin 
@@ -205,7 +208,8 @@ Guessed variable(s) (2):
 
 Total findmin search time: 0.00s
 ```
-*## SAT*
+Using SMT solver
+##*** SMT***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver smt --maxguess 2 --maxsteps 5
 ```
@@ -228,7 +232,8 @@ Guessed variable(s) (2):
 ============================================================
 ```
 
-*## MILP*
+Using MILP solver
+##*** MILP***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver milp --maxsteps 5
 ```
@@ -303,8 +308,8 @@ Guessed variable(s) (2):
   x, v
 ============================================================
 ```
-
-*##Propagate*
+Using ```--propagate```
+##***Propagate***
 
 ``` bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver propagate --known "u,v"
