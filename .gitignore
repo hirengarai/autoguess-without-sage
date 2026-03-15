@@ -7,10 +7,11 @@ output
 output_graph.pdf
 output_graph.gv
 jupyter/
-cipher1/
+ciphers1/
 bench_rref_galois.py
 bench_rref_gf2poly.py
 env312/
+autoguess/
 
 # Cipher output files, graphs, references — not needed in repo
 ciphers/**/output*
