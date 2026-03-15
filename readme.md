@@ -20,6 +20,9 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
     - [Prerequisites](#prerequisites)
     - [Python Setup](#python-setup)
     - [Optional Dependencies](#optional-dependencies)
+  - [Input File Format](#input-file-format)
+  - [Command Line Reference](#command-line-reference)
+  - [Examples](#examples)
   - [Example 1](#example-1)
     - [CP](#cp)
     - [SAT](#sat)
@@ -27,12 +30,6 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
     - [SMT](#smt)
     - [MILP](#milp)
     - [Propagate](#propagate)
-  - [Input File Format](#input-file-format)
-  - [Command Line Reference](#command-line-reference)
-  - [Examples](#examples)
-    - [Example 1 — Simple Connection Relations](#example-1--simple-connection-relations)
-    - [Example 4 — Algebraic Relations with Preprocessing](#example-4--algebraic-relations-with-preprocessing)
-    - [SKINNY-TK3 — Key Bridging with Findmin](#skinny-tk3--key-bridging-with-findmin)
   - [New Features](#new-features)
     - [Find Minimum Guesses (`--findmin`)](#find-minimum-guesses---findmin)
     - [Extra Known Variables (`--known`)](#extra-known-variables---known)
@@ -100,6 +97,100 @@ pip install numba
 ```
 
 ---
+
+## Input File Format
+
+The input file is a plain text file with the following sections:
+
+```text
+# Lines starting with '#' are comments
+
+# Optional: algebraic relations over GF(2) (requires preprocessing)
+algebraic relations
+X1*X4 + X2*X5 + X1 + X3 + X4
+X2*X3 + X1*X6 + X3*X4 + X1
+
+# Connection relations (symmetric or implication)
+connection relations
+X3, X5, X2             # Symmetric: if all but one are known, deduce the last
+X1, X2, X4, X6 => X5   # Implication: if LHS known, deduce RHS
+
+# Variables known at the start
+known
+X2
+
+# Variables that must be determined
+target
+X1
+X3
+X4
+X5
+X6
+
+end
+```
+
+**Relation types:**
+- **Symmetric** (`a, b, c`): If all variables except one are known, the remaining one can be deduced.
+- **Implication** (`a, b => c`): If all LHS variables are known, the RHS can be deduced.
+- **Algebraic** (`X1*X2 + X3 + X4`): Polynomial relations over GF(2). Requires `--preprocess 1 --D <degree>` to expand via Macaulay matrix.
+
+Many example input files are provided in the [ciphers/](ciphers/) directory.
+
+---
+
+## Command Line Reference
+
+```
+python3 autoguess.py [options]
+```
+
+**Core options:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `-i`, `--inputfile FILE` | Input relation file | `ciphers/AES/...` |
+| `-o`, `--outputfile FILE` | Output file for detailed results | `output` |
+| `-s`, `--solver SOLVER` | Solver: `sat`, `cp`, `milp`, `smt`, `mark`, `elim`, `propagate` | `sat` |
+| `-mg`, `--maxguess N` | Upper bound on guessed variables | Auto (= #target vars) |
+| `-ms`, `--maxsteps N` | Depth of search (state copies) | Auto (= #variables) |
+
+**Solver selection:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `-sats`, `--satsolver` | SAT solver: `cadical153`, `glucose3`, `glucose4`, `lingeling`, `minisat22`, ... | `cadical153` |
+| `-cps`, `--cpsolver` | CP solver: `cp-sat`, `gecode`, `chuffed`, `or-tools`, ... | `cp-sat` |
+| `-smts`, `--smtsolver` | SMT solver: `z3`, `yices`, `btor`, `cvc5`, ... | `z3` |
+| `-milpd`, `--milpdirection` | MILP: `min` or `max` | `min` |
+| `-cpopt`, `--cpoptimization` | CP: `1` = minimize, `0` = satisfy | `1` |
+
+**New features:**
+
+| Flag | Description |
+|---|---|
+| `--findmin` | Find the minimum number of guesses (incremental for SAT, descent for SMT) |
+| `-kn`, `--known VAR1,VAR2,...` | Extra known variables (in addition to those in the relation file) |
+| `--reducebasis` | Reduce a guess basis via propagation (use with `-kn`) |
+| `--nograph` | Skip graph generation (faster) |
+| `-t`, `--threads N` | Thread count for MILP/CP solvers (0 = auto) |
+
+**Preprocessing & misc:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `-prep`, `--preprocess` | Enable preprocessing (Macaulay matrix) | `0` |
+| `-D` | Degree for Macaulay matrix | `2` |
+| `-tl`, `--timelimit N` | Time limit in seconds | unlimited |
+| `-tk`, `--tikz` | Generate TikZ LaTeX code | `0` |
+| `-dgl`, `--dglayout` | Graphviz layout: `dot`, `circo`, `neato`, `fdp`, ... | `dot` |
+| `-log` | Save intermediate models to `temp/` | `0` |
+
+> **Note on defaults:** When `-mg` and `-ms` are not specified, they are automatically derived from the input file. `maxguess` defaults to the number of target variables, and `maxsteps` defaults to the total number of variables. This usually gives optimal results without manual tuning.
+
+---
+
+## Examples
 
 ## Example 1
 
@@ -360,192 +451,6 @@ Elapsed time:              0.0001 seconds
 ```
 
 ---
-
-## Input File Format
-
-The input file is a plain text file with the following sections:
-
-```text
-# Lines starting with '#' are comments
-
-# Optional: algebraic relations over GF(2) (requires preprocessing)
-algebraic relations
-X1*X4 + X2*X5 + X1 + X3 + X4
-X2*X3 + X1*X6 + X3*X4 + X1
-
-# Connection relations (symmetric or implication)
-connection relations
-X3, X5, X2             # Symmetric: if all but one are known, deduce the last
-X1, X2, X4, X6 => X5   # Implication: if LHS known, deduce RHS
-
-# Variables known at the start
-known
-X2
-
-# Variables that must be determined
-target
-X1
-X3
-X4
-X5
-X6
-
-end
-```
-
-**Relation types:**
-- **Symmetric** (`a, b, c`): If all variables except one are known, the remaining one can be deduced.
-- **Implication** (`a, b => c`): If all LHS variables are known, the RHS can be deduced.
-- **Algebraic** (`X1*X2 + X3 + X4`): Polynomial relations over GF(2). Requires `--preprocess 1 --D <degree>` to expand via Macaulay matrix.
-
-Many example input files are provided in the [ciphers/](ciphers/) directory.
-
----
-
-## Command Line Reference
-
-```
-python3 autoguess.py [options]
-```
-
-**Core options:**
-
-| Flag | Description | Default |
-|---|---|---|
-| `-i`, `--inputfile FILE` | Input relation file | `ciphers/AES/...` |
-| `-o`, `--outputfile FILE` | Output file for detailed results | `output` |
-| `-s`, `--solver SOLVER` | Solver: `sat`, `cp`, `milp`, `smt`, `mark`, `elim`, `propagate` | `sat` |
-| `-mg`, `--maxguess N` | Upper bound on guessed variables | Auto (= #target vars) |
-| `-ms`, `--maxsteps N` | Depth of search (state copies) | Auto (= #variables) |
-
-**Solver selection:**
-
-| Flag | Description | Default |
-|---|---|---|
-| `-sats`, `--satsolver` | SAT solver: `cadical153`, `glucose3`, `glucose4`, `lingeling`, `minisat22`, ... | `cadical153` |
-| `-cps`, `--cpsolver` | CP solver: `cp-sat`, `gecode`, `chuffed`, `or-tools`, ... | `cp-sat` |
-| `-smts`, `--smtsolver` | SMT solver: `z3`, `yices`, `btor`, `cvc5`, ... | `z3` |
-| `-milpd`, `--milpdirection` | MILP: `min` or `max` | `min` |
-| `-cpopt`, `--cpoptimization` | CP: `1` = minimize, `0` = satisfy | `1` |
-
-**New features:**
-
-| Flag | Description |
-|---|---|
-| `--findmin` | Find the minimum number of guesses (incremental for SAT, descent for SMT) |
-| `-kn`, `--known VAR1,VAR2,...` | Extra known variables (in addition to those in the relation file) |
-| `--reducebasis` | Reduce a guess basis via propagation (use with `-kn`) |
-| `--nograph` | Skip graph generation (faster) |
-| `-t`, `--threads N` | Thread count for MILP/CP solvers (0 = auto) |
-
-**Preprocessing & misc:**
-
-| Flag | Description | Default |
-|---|---|---|
-| `-prep`, `--preprocess` | Enable preprocessing (Macaulay matrix) | `0` |
-| `-D` | Degree for Macaulay matrix | `2` |
-| `-tl`, `--timelimit N` | Time limit in seconds | unlimited |
-| `-tk`, `--tikz` | Generate TikZ LaTeX code | `0` |
-| `-dgl`, `--dglayout` | Graphviz layout: `dot`, `circo`, `neato`, `fdp`, ... | `dot` |
-| `-log` | Save intermediate models to `temp/` | `0` |
-
-> **Note on defaults:** When `-mg` and `-ms` are not specified, they are automatically derived from the input file. `maxguess` defaults to the number of target variables, and `maxsteps` defaults to the total number of variables. This usually gives optimal results without manual tuning.
-
----
-
-## Examples
-
-### Example 1 — Simple Connection Relations
-
-**SAT solver:**
-```bash
-python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --maxguess 2 --maxsteps 5
-```
-
-```
-============================================================
-SAT SOLVER — Taken from https://doi.org/10.1007/978-3-642-00862-7_11
-============================================================
-Variables: 7 | Relations: 5
-Max guess: 2 | Max steps: 5
-Solver: cadical153
-------------------------------------------------------------
-MODEL GENERATION
-------------------------------------------------------------
-SAT model generated in 0.00 seconds
-------------------------------------------------------------
-SOLVING
-------------------------------------------------------------
-Solving finished in 0.00 seconds
-
-============================================================
-RESULTS
-============================================================
-Number of guesses:         2
-Known in final state:      7 / 7
-Max steps used:            5
-------------------------------------------------------------
-Guessed variable(s) (2):
-  x, s
-============================================================
-```
-
-**With a different SAT solver (e.g., glucose3):**
-```bash
-python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --satsolver glucose3 --maxguess 2 --maxsteps 5
-```
-
-**CP solver:**
-```bash
-python3 autoguess.py -i ciphers/Example1/relationfile.txt -s cp --maxsteps 5
-```
-
-**SMT solver:**
-```bash
-python3 autoguess.py -i ciphers/Example1/relationfile.txt -s smt --maxguess 2 --maxsteps 5
-```
-
-### Example 4 — Algebraic Relations with Preprocessing
-
-This example demonstrates algebraic relations over GF(2). The `--preprocess` flag expands them via the Macaulay matrix before solving.
-
-```bash
-python3 autoguess.py -i ciphers/Example4/algebraic_relations.txt -s sat --maxguess 1 --maxsteps 5 --preprocess 1 --D 3
-```
-
-### SKINNY-TK3 — Key Bridging with Findmin
-
-Find the minimum guess basis for 23-round SKINNY-TK3 zero-correlation key bridging:
-
-```bash
-python3 autoguess.py -i ciphers/SKINNY-TK3/relationfile_skinnytk3zckb_23r_mg25_ms12_z16_13.txt -s sat --findmin -mg 25
-```
-
-```
-============================================================
-FIND-MIN MODE: searching for minimum guesses (starting from 25)
-============================================================
-  max_guess = 25:  SAT  — a guess basis of size 25 exists  (0.43s)
-  max_guess = 24:  UNSAT  (0.27s)
-
-############################################################
-FIND-MIN RESULT: minimum number of guesses = 25
-Total findmin time: 0.87s
-############################################################
-
-Re-solving with max_guess = 25 for detailed output ...
-
-============================================================
-RESULTS
-============================================================
-Number of guesses:         25
-Known in final state:      36 / 104
-Max steps used:            104
-------------------------------------------------------------
-Guessed variable(s) (25):
-  tk2_2, tk3_2, tk2_5, tk3_5, tk1_9, tk3_9, sk_17_0, sk_19_5, ...
-============================================================
-```
 
 ---
 
