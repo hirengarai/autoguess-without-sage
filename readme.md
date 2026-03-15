@@ -21,11 +21,12 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
     - [Python Setup](#python-setup)
     - [Optional Dependencies](#optional-dependencies)
   - [Example 1](#example-1)
-  - [***CP***](#cp)
-  - [***SAT***](#sat)
-  - [***SMT***](#smt)
-  - [***MILP***](#milp)
-  - [***Propagate***](#propagate)
+    - [CP](#cp)
+    - [SAT](#sat)
+    - [Findmin](#findmin)
+    - [SMT](#smt)
+    - [MILP](#milp)
+    - [Propagate](#propagate)
   - [Input File Format](#input-file-format)
   - [Command Line Reference](#command-line-reference)
   - [Examples](#examples)
@@ -101,9 +102,10 @@ pip install numba
 ---
 
 ## Example 1
-Find a minimal guess basis for Example1 using CP
 
-## ***CP***
+Find a minimal guess basis for Example 1 using different solvers.
+
+### CP
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver cp --maxsteps 5 --dglayout circo
 ```
@@ -127,8 +129,7 @@ Guessed variable(s) (2):
   v, u
 ============================================================
 ```
-Using SAT solver
-## ***SAT***
+### SAT
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --maxguess 2 --maxsteps 5
 ```
@@ -160,7 +161,7 @@ Guessed variable(s) (2):
   x, s
 ============================================================
 ```
-Using ```--findmin```
+### Findmin
 
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --findmin 
@@ -216,8 +217,7 @@ Guessed variable(s) (2):
 
 Total findmin search time: 0.00s
 ```
-Using SMT solver
-## ***SMT***
+### SMT
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver smt --maxguess 2 --maxsteps 5
 ```
@@ -240,8 +240,7 @@ Guessed variable(s) (2):
 ============================================================
 ```
 
-Using MILP solver
-## ***MILP***
+### MILP
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver milp --maxsteps 5
 ```
@@ -316,8 +315,7 @@ Guessed variable(s) (2):
   x, v
 ============================================================
 ```
-Using ```--propagate```
-## ***Propagate***
+### Propagate
 
 ``` bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver propagate --known "u,v"
