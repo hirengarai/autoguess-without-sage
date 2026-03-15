@@ -189,7 +189,7 @@ class ReduceGDtoMILP:
                 ######################################################################################################
                 ######################################################################################################
                 LHS = ' + '.join(v_path_variables)
-                milp_constraints += '\ Constraints corresponding to the state variable %s:\n' % v_new
+                milp_constraints += '\\ Constraints corresponding to the state variable %s:\n' % v_new
                 if tau == 1:
                     milp_constraints += '%s - %s = 0\n' % (v_new, LHS)
                 else:
@@ -203,7 +203,7 @@ class ReduceGDtoMILP:
                     v_connected_variables = [step_var(var, step) for var in self.deductions[v][i]]
                     LHS = ' - '.join(v_connected_variables)
                     kapa = len(v_connected_variables)
-                    milp_constraints += '\ Constraints corresponding to the path variable %s:\n' % v_path_variables[i]
+                    milp_constraints += '\\ Constraints corresponding to the path variable %s:\n' % v_path_variables[i]
                     if kapa == 1:
                         milp_constraints += '%s - %s = 0\n' % (
                             v_path_variables[i], LHS)
@@ -219,7 +219,7 @@ class ReduceGDtoMILP:
                     v_connected_variables = [step_var(var, step) for var in self.deductions[v][i]]
                     LHS = ' - '.join(v_connected_variables)
                     kapa = len(v_connected_variables)
-                    milp_constraints += '\ Constraints corresponding to the path variable %s:\n' % v_path_variables[i]
+                    milp_constraints += '\\ Constraints corresponding to the path variable %s:\n' % v_path_variables[i]
                     if kapa == 1:
                         milp_constraints += '%s - %s = 0\n' % (
                             v_path_variables[i], LHS)

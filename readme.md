@@ -14,25 +14,30 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
 
 ## Table of Contents
 
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Python Setup](#python-setup)
-  - [Optional Dependencies](#optional-dependencies)
-- [Quick Start](#quick-start)
-- [Input File Format](#input-file-format)
-- [Command Line Reference](#command-line-reference)
-- [Examples](#examples)
-  - [Example 1 — Simple Connection Relations](#example-1--simple-connection-relations)
-  - [Example 4 — Algebraic Relations with Preprocessing](#example-4--algebraic-relations-with-preprocessing)
-  - [SKINNY-TK3 — Key Bridging with Findmin](#skinny-tk3--key-bridging-with-findmin)
-- [New Features](#new-features)
-  - [Find Minimum Guesses (--findmin)](#find-minimum-guesses---findmin)
-  - [Extra Known Variables (--known)](#extra-known-variables---known)
-  - [Reduce Basis (--reducebasis)](#reduce-basis---reducebasis)
-  - [Propagation Mode](#propagation-mode)
-- [Solver-Specific Notes](#solver-specific-notes)
-- [Troubleshooting](#troubleshooting)
-- [Credits](#credits)
+- [Autoguess (without SageMath)](#autoguess-without-sagemath)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [Python Setup](#python-setup)
+    - [Optional Dependencies](#optional-dependencies)
+  - [Example 1](#example-1)
+  - [Input File Format](#input-file-format)
+  - [Command Line Reference](#command-line-reference)
+  - [Examples](#examples)
+    - [Example 1 — Simple Connection Relations](#example-1--simple-connection-relations)
+    - [Example 4 — Algebraic Relations with Preprocessing](#example-4--algebraic-relations-with-preprocessing)
+    - [SKINNY-TK3 — Key Bridging with Findmin](#skinny-tk3--key-bridging-with-findmin)
+  - [New Features](#new-features)
+    - [Find Minimum Guesses (`--findmin`)](#find-minimum-guesses---findmin)
+    - [Extra Known Variables (`--known`)](#extra-known-variables---known)
+    - [Reduce Basis (`--reducebasis`)](#reduce-basis---reducebasis)
+    - [Propagation Mode](#propagation-mode)
+  - [Solver-Specific Notes](#solver-specific-notes)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Performance Tips](#performance-tips)
+  - [Credits](#credits)
+  - [License](#license)
 
 ---
 
@@ -86,28 +91,106 @@ pip install gurobipy
 
 ---
 
-## Quick Start
+## Example 1
+Find a minimal guess basis for Example1 using CP
 
+*## CP*
 ```bash
-# Find a minimal guess basis for Example1 using SAT
-python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --findmin
+python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver cp --maxsteps 5 --dglayout circo
 ```
 
 Output:
+```
+OR Tools is available
+Generating the CP model ...
+CP model was generated after 0.00 seconds
+Solving the CP model with cp-sat ...
+Solving process was finished after 0.39 seconds
+
+============================================================
+RESULTS
+============================================================
+Number of guesses:         2
+Known in final state:      7 / 7
+Max steps used:            5
+------------------------------------------------------------
+Guessed variable(s) (2):
+  v, u
+============================================================
+```
+*## SAT*
+```bash
+python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --maxguess 2 --maxsteps 5
+```
+Output:
+```
+============================================================
+SAT SOLVER — Taken from https://doi.org/10.1007/978-3-642-00862-7_11: Speeding up Collision Search for Byte-Oriented Hash Functions
+============================================================
+Variables: 7 | Relations: 5
+Max guess: 2 | Max steps: 5
+Solver: cadical153
+------------------------------------------------------------
+MODEL GENERATION
+------------------------------------------------------------
+SAT model generated in 0.00 seconds
+------------------------------------------------------------
+SOLVING
+------------------------------------------------------------
+Solving finished in 0.00 seconds
+
+============================================================
+RESULTS
+============================================================
+Number of guesses:         2
+Known in final state:      7 / 7
+Max steps used:            5
+------------------------------------------------------------
+Guessed variable(s) (2):
+  x, s
+============================================================
+```
+
+```bash
+python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --findmin 
+```
+
 ```
 ============================================================
 FIND-MIN MODE: searching for minimum guesses (starting from 7)
 ============================================================
   max_guess = 7:  SAT  — a guess basis of size 7 exists  (0.00s)
-  ...
+  max_guess = 6:  SAT  — a guess basis of size 6 exists  (0.00s)
+  max_guess = 5:  SAT  — a guess basis of size 5 exists  (0.00s)
+  max_guess = 4:  SAT  — a guess basis of size 4 exists  (0.00s)
+  max_guess = 3:  SAT  — a guess basis of size 2 exists  (0.00s)
   max_guess = 2:  SAT  — a guess basis of size 2 exists  (0.00s)
   max_guess = 1:  UNSAT  (0.00s)
 
 ############################################################
 FIND-MIN RESULT: minimum number of guesses = 2
+Total findmin time: 0.00s
 ############################################################
 
 Re-solving with max_guess = 2 for detailed output ...
+
+(Note: the timings below are for this single verification
+ solve only, not for the entire findmin search.)
+
+============================================================
+SAT SOLVER — Taken from https://doi.org/10.1007/978-3-642-00862-7_11: Speeding up Collision Search for Byte-Oriented Hash Functions
+============================================================
+Variables: 7 | Relations: 5
+Max guess: 2 | Max steps: 7
+Solver: cadical153
+------------------------------------------------------------
+MODEL GENERATION
+------------------------------------------------------------
+SAT model generated in 0.00 seconds
+------------------------------------------------------------
+SOLVING
+------------------------------------------------------------
+Solving finished in 0.00 seconds
 
 ============================================================
 RESULTS
@@ -118,6 +201,150 @@ Max steps used:            7
 ------------------------------------------------------------
 Guessed variable(s) (2):
   x, s
+============================================================
+
+Total findmin search time: 0.00s
+```
+*## SAT*
+```bash
+python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver smt --maxguess 2 --maxsteps 5
+```
+Output:
+```
+Generating the SMT model ...
+SMT model was generated after 0.01 seconds
+Checking the satisfiability of the constructed SMT model using z3 ...
+Checking was finished after 0.00 seconds
+
+============================================================
+RESULTS
+============================================================
+Number of guesses:         2
+Known in final state:      7 / 7
+Max steps used:            5
+------------------------------------------------------------
+Guessed variable(s) (2):
+  x, v
+============================================================
+```
+
+*## MILP*
+```bash
+python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver milp --maxsteps 5
+```
+
+Output:
+```
+Generating the MILP model ...
+MILP model was generated after 0.00 seconds
+Set parameter Username
+Set parameter LicenseID to value 2762404
+Academic license - for non-commercial use only - expires 2027-01-09
+Read LP format model from file temp/milp_mg7_ms5_min_55355325835fbfb9cb871ab7586d43.lp
+Reading time = 0.00 seconds
+: 287 rows, 167 columns, 1084 nonzeros
+Set parameter MIPFocus to value 0
+Set parameter Threads to value 0
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (mac64[arm] - Darwin 25.3.0 25D2128)
+
+CPU model: Apple M3 Pro
+Thread count: 11 physical cores, 11 logical processors, using up to 11 threads
+
+Optimize a model with 287 rows, 167 columns and 1084 nonzeros (Min)
+Model fingerprint: 0x0a059f52
+Model has 7 linear objective coefficients
+Variable types: 0 continuous, 167 integer (167 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 5e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 7e+00]
+Found heuristic solution: objective 7.0000000
+Presolve removed 90 rows and 67 columns
+Presolve time: 0.01s
+Presolved: 197 rows, 100 columns, 802 nonzeros
+Variable types: 0 continuous, 100 integer (100 binary)
+
+Root relaxation: objective 2.516199e-02, 119 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    0.02516    0   75    7.00000    0.02516   100%     -    0s
+H    0     0                       2.0000000    0.02516  98.7%     -    0s
+     0     0    1.00000    0   55    2.00000    1.00000  50.0%     -    0s
+
+Cutting planes:
+  Gomory: 2
+  Cover: 6
+  Clique: 6
+  MIR: 2
+  RLT: 12
+  BQP: 6
+
+Explored 1 nodes (245 simplex iterations) in 0.02 seconds (0.02 work units)
+Thread count was 11 (of 11 available processors)
+
+Solution count 2: 2 7
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 2.000000000000e+00, best bound 2.000000000000e+00, gap 0.0000%
+Solving process was finished after 0.02 seconds
+
+============================================================
+RESULTS
+============================================================
+Number of guesses:         2
+Known in final state:      7 / 7
+Max steps used:            5
+------------------------------------------------------------
+Guessed variable(s) (2):
+  x, v
+============================================================
+```
+
+*##Propagate*
+
+``` bash
+python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver propagate --known "u,v"
+```
+Output:
+```
+============================================================
+Knowledge propagation started - 2026-03-15 14:14:24.987280
+Problem: Taken from https://doi.org/10.1007/978-3-642-00862-7_11: Speeding up Collision Search for Byte-Oriented Hash Functions
+Total variables: 7
+Total relations: 5 (symmetric: 5, implication: 0)
+Initially known variables: 2
+  u, v
+============================================================
+
+Iteration 1: learned 1 new variable(s)
+  s  <--  [v, u, s]
+
+Iteration 2: learned 1 new variable(s)
+  x  <--  [x, s, v]
+
+Iteration 3: learned 1 new variable(s)
+  t  <--  [u, t, x]
+
+Iteration 4: learned 1 new variable(s)
+  z  <--  [z, s, v, t]
+
+Iteration 5: learned 1 new variable(s)
+  y  <--  [x, u, s, y, z]
+
+============================================================
+PROPAGATION SUMMARY
+============================================================
+Total iterations:          5
+Initially known:           2
+Newly learned:             5
+Total known after prop.:   7 / 7
+Unreachable variables:     0
+Target variables covered:  7 / 7
+Elapsed time:              0.0001 seconds
 ============================================================
 ```
 
