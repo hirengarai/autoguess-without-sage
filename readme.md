@@ -89,6 +89,10 @@ pysmt-install --z3   # Downloads and installs the Z3 backend
 # MILP solver (requires Gurobi license)
 pip install gurobipy
 
+# Preprocessing (--preprocess 1) uses Macaulay basis reduction over GF(2),
+# which requires numba for JIT-compiled linear algebra
+pip install numba
+
 # Graphviz system binary (for rendering graphs to PDF)
 # macOS:  brew install graphviz
 # Ubuntu: apt install graphviz libpangocairo-1.0-0
