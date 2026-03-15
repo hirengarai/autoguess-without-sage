@@ -22,7 +22,7 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
     - [Optional Dependencies](#optional-dependencies)
   - [Input File Format](#input-file-format)
   - [Command Line Reference](#command-line-reference)
-  - [Examples](#examples)
+- [Examples](#examples)
   - [Example 1](#example-1)
     - [CP](#cp)
     - [SAT](#sat)
@@ -190,7 +190,7 @@ python3 autoguess.py [options]
 
 ---
 
-## Examples
+# Examples
 
 ## Example 1
 
@@ -449,8 +449,6 @@ Target variables covered:  7 / 7
 Elapsed time:              0.0001 seconds
 ============================================================
 ```
-
----
 
 ---
 
