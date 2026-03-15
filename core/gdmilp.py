@@ -12,7 +12,8 @@ import os
 import time
 import random
 from core.parsesolution import parse_solver_solution
-# from core.graphdrawer import draw_graph
+from core.graphdrawer import draw_graph
+from core.varnames import step_var, path_var
 from config import TEMP_DIR
 
 class ReduceGDtoMILP:
@@ -35,7 +36,7 @@ class ReduceGDtoMILP:
     count = 0
 
     def __init__(self, inputfile_name=None, outputfile_name='output', max_guess=0, max_steps=0, direction='min',\
-        tikz=0, preprocess=1, D=2, dglayout="dot", log=0):
+        tikz=0, preprocess=1, D=2, dglayout="dot", drawgraph=True, log=0, threads=0, extra_known=None):
         self.inputfile_name = inputfile_name
         self.rnd_string_tmp = '%030x' % random.randrange(16**30)        
         self.output_dir = outputfile_name
@@ -43,10 +44,12 @@ class ReduceGDtoMILP:
         self.max_steps = max_steps
         self.direction = direction
         self.dglayout = dglayout
+        self.draw_graph = drawgraph
         self.log = log
+        self.threads = threads
         ###############################
         # Read and parse the input file
-        parsed_data = read_relation_file(self.inputfile_name, preprocess, D)
+        parsed_data = read_relation_file(self.inputfile_name, preprocess, D, extra_known=extra_known)
         self.dummy_mapping = parsed_data.get("dummy_mapping", {})
         self.problem_name = parsed_data['problem_name']
         self.variables = parsed_data['variables']
@@ -68,7 +71,7 @@ class ReduceGDtoMILP:
                             max_steps, direction, self.rnd_string_tmp)
         self.deductions = self.generate_possible_deductions()
         # milp_variables is initialized to the variables corresponding to the initial state variables
-        self.milp_variables = ['%s_0' % v for v in self.variables]
+        self.milp_variables = [step_var(v, 0) for v in self.variables]
         self.time_limit = -1
         self.tikz = tikz
 
@@ -111,20 +114,20 @@ class ReduceGDtoMILP:
         This method generates the objective function of the MILP problem
         """
 
+        _known_set = set(self.known_variables)
         if self.direction == 'max':
             objective_function = 'Maximize\n'
-            final_state = ['%s_%d' % (v, self.max_steps)
-                           for v in self.target_variables]
+            final_state = [step_var(v, self.max_steps) for v in self.target_variables]
             objective_function += ' + '.join(final_state)
         elif self.direction == 'min':
             objective_function = 'Minimize\n'
-            unknown_init_state_vars = [v for v in self.variables if v not in self.known_variables]
+            unknown_init_state_vars = [v for v in self.variables if v not in _known_set]
             if self.target_weights != None:
                 wights = [self.target_weights.get(v, 1) for v in unknown_init_state_vars]
                 weighted_init_state = zip(wights, unknown_init_state_vars)
-                objective_list = ['%d %s_%d' % (w, v, 0) for (w, v) in weighted_init_state]                
+                objective_list = ['%d %s' % (w, step_var(v, 0)) for (w, v) in weighted_init_state]
             else:
-                objective_list = ['%s_%d' % (v, 0) for v in unknown_init_state_vars]
+                objective_list = [step_var(v, 0) for v in unknown_init_state_vars]
             objective_function += ' + '.join(objective_list)
         objective_function += '\n'
         return objective_function
@@ -137,17 +140,16 @@ class ReduceGDtoMILP:
         """
 
         initial_constraints = 'Subject To\n'
-
-        unknown_vars = ['%s' % v for v in self.variables if v not in self.known_variables]
-        unknown_init_state_vars = ['%s_0' % v for v in unknown_vars]
+        _known_set = set(self.known_variables)
+        unknown_vars = [v for v in self.variables if v not in _known_set]
+        unknown_init_state_vars = [step_var(v, 0) for v in unknown_vars]
         if self.target_weights != None:
-            LHS1 = ['%d %s_0' % (self.target_weights[v], v) for v in unknown_vars]
+            LHS1 = ['%d %s' % (self.target_weights[v], step_var(v, 0)) for v in unknown_vars]
             LHS1 = ' + '.join(LHS1)
         else:
             LHS1 = ' + '.join(unknown_init_state_vars)
         RHS1 = self.max_guess
-        final_state_target_vars = ['%s_%d' % (
-            v, self.max_steps) for v in self.target_variables]
+        final_state_target_vars = [step_var(v, self.max_steps) for v in self.target_variables]
         LHS2 = ' + '.join(final_state_target_vars)
         RHS2 = len(final_state_target_vars)
 
@@ -156,16 +158,16 @@ class ReduceGDtoMILP:
             initial_constraints += '%s <= %d\n' % (LHS1, RHS1)
         elif self.direction == 'min':
             initial_constraints += '%s <= %d\n' % (LHS1, RHS1)
-            initial_constraints += '%s = %d\n' % (LHS2, RHS2)          
+            initial_constraints += '%s = %d\n' % (LHS2, RHS2)
 
         for v in self.known_variables:
             if v != '':
-                initial_constraints += '%s_0 = 1\n' % v
+                initial_constraints += '%s = 1\n' % step_var(v, 0)
 
         # Limit the notguessed variables to be equal to 0 in the first step of knowledge propagation
         for v in self.notguessed_variables:
-            if v != '':                
-                initial_constraints += '%s_0 = 0;\n' % v        
+            if v != '':
+                initial_constraints += '%s = 0;\n' % step_var(v, 0)
         return initial_constraints
     
 
@@ -178,11 +180,10 @@ class ReduceGDtoMILP:
         milp_constraints = ''
         for step in range(self.max_steps):
             for v in self.variables:
-                v_old = '%s_%d' % (v, step)
-                v_new = '%s_%d' % (v, step + 1)
+                v_old = step_var(v, step)
+                v_new = step_var(v, step + 1)
                 tau = len(self.deductions[v])
-                v_path_variables = ['%s_%d_%d' %
-                                    (v, step + 1, i) for i in range(tau)]
+                v_path_variables = [path_var(v, step + 1, i) for i in range(tau)]
                 self.milp_variables.extend([v_new] + v_path_variables)
                 #####################################-State variable constraints-#####################################
                 ######################################################################################################
@@ -199,8 +200,7 @@ class ReduceGDtoMILP:
                 ######################################################################################################
                 ######################################################################################################
                 for i in range(tau // 2):
-                    v_connected_variables = ['%s_%d' % (
-                        var, step) for var in self.deductions[v][i]]
+                    v_connected_variables = [step_var(var, step) for var in self.deductions[v][i]]
                     LHS = ' - '.join(v_connected_variables)
                     kapa = len(v_connected_variables)
                     milp_constraints += '\ Constraints corresponding to the path variable %s:\n' % v_path_variables[i]
@@ -216,8 +216,7 @@ class ReduceGDtoMILP:
                 ######################################################################################################
                 ######################################################################################################
                 for i in range(tau // 2, tau):
-                    v_connected_variables = ['%s_%d' % (
-                        var, step) for var in self.deductions[v][i]]
+                    v_connected_variables = [step_var(var, step) for var in self.deductions[v][i]]
                     LHS = ' - '.join(v_connected_variables)
                     kapa = len(v_connected_variables)
                     milp_constraints += '\ Constraints corresponding to the path variable %s:\n' % v_path_variables[i]
@@ -318,7 +317,7 @@ class ReduceGDtoMILP:
             output_buffer += sub_title
             for rel in self.symmetric_relations:
                 rel_known_vars = [
-                    v for v in rel if self.solutions[step]['%s_%d' % (v, step)] == 1]
+                    v for v in rel if self.solutions[step][step_var(v, step)] == 1]
                 rel_str = ', '.join(rel)
                 if len(rel_known_vars) == (len(rel) - 1):
                     determined_var = list(set(rel) - set(rel_known_vars))
@@ -335,7 +334,7 @@ class ReduceGDtoMILP:
                     output_buffer += output
             for rel in self.implication_relations:
                 rel_known_vars = [
-                    v for v in rel if self.solutions[step]['%s_%d' % (v, step)] == 1]
+                    v for v in rel if self.solutions[step][step_var(v, step)] == 1]
                 rel_str = ', '.join(rel)
                 if rel_known_vars == rel[0:-1]:
                     determined_var = [rel[-1]]
@@ -352,7 +351,7 @@ class ReduceGDtoMILP:
                     output_buffer += output
             output_buffer += separator_line
             step += 1
-        self.finally_known = [v for v in self.variables if self.solutions[self.max_steps]['%s_%d' % (v, self.max_steps)] == 1]
+        self.finally_known = [v for v in self.variables if self.solutions[self.max_steps][step_var(v, self.max_steps)] == 1]
         output_buffer += '\nThe following variables are known in final state:\n%s' % ', '.join(self.finally_known)
         with open(self.output_dir, 'w') as outputfile_obj:
             outputfile_obj.write(output_buffer)
@@ -372,7 +371,7 @@ class ReduceGDtoMILP:
         # 1 (quickly find a feasible solution)
         # 2 (proving optimality is in priority)
         # 3 (focus on the best bound)
-        self.milp_model.params.Threads = 0  # 0 (default value)
+        self.milp_model.params.Threads = self.threads  # 0 = use all available cores
         self.milp_model.params.OutputFlag = 1  # 1 (default value)
 
         start_time = time.time()
@@ -392,7 +391,7 @@ class ReduceGDtoMILP:
             self.objval = self.milp_model.objval
             self.solutions = [0]*(self.max_steps + 1)
             for step in range(self.max_steps + 1):
-                state_vars = ['%s_%d' % (v, step) for v in self.variables]
+                state_vars = [step_var(v, step) for v in self.variables]
                 state_values = list(
                     map(lambda x: int(self.milp_model.getVarByName(x).Xn), state_vars))
                 self.solutions[step] = dict(zip(state_vars, state_values))
@@ -405,10 +404,11 @@ class ReduceGDtoMILP:
                         self.max_guess, self.max_steps, self.direction)
                     grb_solution_file_path = os.path.join(
                         TEMP_DIR, gurobi_solution_file_name)
-                    self.milp_model.write(grb_solution_file_path)                    
+                    self.milp_model.write(grb_solution_file_path)
                 parse_solver_solution(self)
-                # draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,\
-                #     self.output_dir, self.tikz, self.dglayout)
+                if self.draw_graph:
+                    draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,\
+                        self.output_dir, self.tikz, self.dglayout)
         elif self.milp_model.Status == GRB.INFEASIBLE:
             print('The obtained milp model is infeasible')
         else:

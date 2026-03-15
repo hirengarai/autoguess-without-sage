@@ -30,7 +30,7 @@ def ordered_set(seq):
     return [x for x in seq if not (x in seen or seen_add(x))]
 
 
-def read_relation_file(path, preprocess=1, D=2, log=0):
+def read_relation_file(path, preprocess=1, D=2, log=0, extra_known=None):
     """
     Reads a relation file in GD format and parses it into a systems of connection relations
     """
@@ -92,6 +92,10 @@ def read_relation_file(path, preprocess=1, D=2, log=0):
         known_variables = known_variables.split('\n')
     known_variables.extend([rel[0] for rel in symmetric_relations if len(rel) == 1])
     known_variables = ordered_set(known_variables)
+    if extra_known:
+        for v in extra_known:
+            if v not in known_variables:
+                known_variables.append(v)
     symmetric_relations = [rel for rel in symmetric_relations if len(rel) != 1]
     target_variables = sections.get('target', [])
     if target_variables != []:
@@ -324,7 +328,11 @@ def algebraic_relations_to_connection_relations(algebraic_relations):
 
     all_monomials = get_monomials_from_list_of_polys(algebraic_relations)
     algebraic_variables = get_variables_from_list_of_monomials(all_monomials)
+    # Generate a random prefix and ensure it doesn't collide with existing variable names
+    algebraic_variables_set = set(algebraic_variables)
     dummy_vars_prefix = random_prefix_generator(4)
+    while any(v.startswith(dummy_vars_prefix) for v in algebraic_variables_set):
+        dummy_vars_prefix = random_prefix_generator(4)
     substitution_dictionary = dict()
 
     for monomial in all_monomials:
@@ -332,7 +340,7 @@ def algebraic_relations_to_connection_relations(algebraic_relations):
             monomial_variables = get_variables_from_monomial(monomial)
             var_indices = [algebraic_variables.index(x) for x in monomial_variables]
             var_indices = list(map(str, var_indices))
-            dummy_var = "{0}{1}".format(dummy_vars_prefix, "".join(var_indices))
+            dummy_var = "{0}{1}".format(dummy_vars_prefix, "x".join(var_indices))
 
             if dummy_var not in substitution_dictionary.values():
                 connection_relations.append("{0}=>{1}".format(",".join(monomial_variables), dummy_var))

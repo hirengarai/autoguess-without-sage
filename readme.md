@@ -1,373 +1,416 @@
-# Autoguess without Sage
+# Autoguess (without SageMath)
 
-A standalone implementation of the Autoguess tool that does not require SageMath. This script parses connection and algebraic relations, builds and solves the corresponding Macaulay matrix, and outputs the results.
+A standalone implementation of the [Autoguess](https://github.com/hadipourh/autoguess) tool that does **not** require SageMath. This tool automates **guess-and-determine** attacks and **key-bridging** techniques on symmetric ciphers using a variety of solvers:
 
-> **Note:** This implementation is heavily inspired from the original [autoguess](https://github.com/hadipourh/autoguess.git) project, and follows the same directory and file structure.
+- **SAT** via [PySAT](https://github.com/pysathq/pysat) (default)
+- **CP** via [MiniZinc](https://www.minizinc.org/) (with OR-Tools / Gecode / Chuffed)
+- **MILP** via [Gurobi](https://www.gurobi.com/)
+- **SMT** via [pySMT](https://github.com/pysmt/pysmt) (Z3 backend)
+- **Propagation** — lightweight solver-free mode
 
+> This implementation follows the same directory structure and relation file format as the original [autoguess](https://github.com/hadipourh/autoguess) project. The Groebner basis solver is not available (it requires SageMath).
 
-## Prerequisites
+---
 
-Before using this tool, ensure you have the following installed on your system:
+## Table of Contents
 
-- **Minizinc**
-- **Z3**: It is the default SMT solver.
-- **Gurobi**: MILP solver.
-- **setuptools**: For packaging support.
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Python Setup](#python-setup)
+  - [Optional Dependencies](#optional-dependencies)
+- [Quick Start](#quick-start)
+- [Input File Format](#input-file-format)
+- [Command Line Reference](#command-line-reference)
+- [Examples](#examples)
+  - [Example 1 — Simple Connection Relations](#example-1--simple-connection-relations)
+  - [Example 4 — Algebraic Relations with Preprocessing](#example-4--algebraic-relations-with-preprocessing)
+  - [SKINNY-TK3 — Key Bridging with Findmin](#skinny-tk3--key-bridging-with-findmin)
+- [New Features](#new-features)
+  - [Find Minimum Guesses (--findmin)](#find-minimum-guesses---findmin)
+  - [Extra Known Variables (--known)](#extra-known-variables---known)
+  - [Reduce Basis (--reducebasis)](#reduce-basis---reducebasis)
+  - [Propagation Mode](#propagation-mode)
+- [Solver-Specific Notes](#solver-specific-notes)
+- [Troubleshooting](#troubleshooting)
+- [Credits](#credits)
 
-### Python dependencies
+---
 
-All the following code are tested on python version [3.12.6](https://www.python.org/downloads/release/python-3126/).
+## Installation
 
-Create a virtual environment in python.
+### Prerequisites
+
+| Dependency | Required? | Purpose |
+|---|---|---|
+| Python 3.10+ | Yes | Runtime |
+| [PySAT](https://github.com/pysathq/pysat) | Yes | SAT solving (core solver) |
+| [Graphviz](https://graphviz.org/) (system package) | Recommended | Render determination flow graphs |
+| [MiniZinc](https://www.minizinc.org/) | For CP solver | Constraint programming |
+| [Gurobi](https://www.gurobi.com/) | For MILP solver | Mixed-integer linear programming (requires license) |
+| [pySMT](https://github.com/pysmt/pysmt) + Z3 | For SMT solver | Satisfiability modulo theories |
+
+### Python Setup
+
 ```bash
-python3 -m venv myenv
-source myenv/bin/activate
-```
+# Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-Install the required Python packages via `pip`:
-
-```bash
-#1. Core package manager fix (usually already present)
+# Upgrade pip
 pip install --upgrade pip setuptools wheel
 
-#2. Install MiniZinc Python interface
+# Install core dependencies (SAT solver + visualization)
+pip install 'python-sat[pblib,aiger]' graphviz dot2tex
+```
+
+### Optional Dependencies
+
+Install only the solvers you plan to use:
+
+```bash
+# CP solver (requires MiniZinc system binary)
 pip install minizinc
+# Then install MiniZinc: brew install minizinc (macOS) or apt install minizinc (Ubuntu)
 
-#3. Install PySAT with optional solvers
-pip install 'python-sat[pblib,aiger]'
-
-#4. Install PySMT
+# SMT solver
 pip install pysmt
-pysmt-install --z3   # Still needed separately to install Z3 backend
+pysmt-install --z3   # Downloads and installs the Z3 backend
 
-
-#5. Galois includes numpy, so no need to install numpy separately
-pip install galois
-
-#6. Install gurobipy
+# MILP solver (requires Gurobi license)
 pip install gurobipy
 
-#7. Install graphviz
-pip install graphviz
-
-#8. Install dot2tex (tikz)
-pip install dot2tex
+# Graphviz system binary (for rendering graphs to PDF)
+# macOS:  brew install graphviz
+# Ubuntu: apt install graphviz libpangocairo-1.0-0
 ```
 
-### Defaults
+---
 
-- cp solver: gecode [comes with minizinc]
-- sat solver: cadical153 [possibly with pysat]
-- smt solver: z3
-
-
-
-### Example 1
-
-### CP
-```bash
-python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver cp --maxsteps 5
-```
-### Terminal output
+## Quick Start
 
 ```bash
-OR Tools is available
-Number of guessed variables is set to be at most 7
-Generating the CP model ...
-CP model was generated after 0.00 seconds
-Solving the CP model with cp-sat ...
-Solving process was finished after 0.36 seconds
-Number of guesses: 2
-Number of known variables in the final state: 7 out of 7
-The following 2 variable(s) are guessed:
-v, u
+# Find a minimal guess basis for Example1 using SAT
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --findmin
 ```
 
-### SAT
-
-```bash
-python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --maxguess 2 --maxsteps 5
+Output:
 ```
-### Terminal output
+============================================================
+FIND-MIN MODE: searching for minimum guesses (starting from 7)
+============================================================
+  max_guess = 7:  SAT  — a guess basis of size 7 exists  (0.00s)
+  ...
+  max_guess = 2:  SAT  — a guess basis of size 2 exists  (0.00s)
+  max_guess = 1:  UNSAT  (0.00s)
 
-```bash
-Generating the SAT model ...
-SAT model was generated after 0.00 seconds
+############################################################
+FIND-MIN RESULT: minimum number of guesses = 2
+############################################################
 
-Solving with cadical153 ...
-Time used by SAT solver: 0.00 seconds
-Number of guesses: 2
-Number of known variables in the final state: 7 out of 7
-The following 2 variable(s) are guessed:
-x, s
-```
+Re-solving with max_guess = 2 for detailed output ...
 
-You can choose specific solver also e.g. glucose3
-```bash
-python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --satsolver glucose3 --maxguess 2 --maxsteps 5
-```
-### Terminal output
-
-```bash
-Generating the SAT model ...
-SAT model was generated after 0.00 seconds
-
-Solving with glucose3 ...
-Time used by SAT solver: 0.00 seconds
-Number of guesses: 2
-Number of known variables in the final state: 7 out of 7
-The following 2 variable(s) are guessed:
-x, s
+============================================================
+RESULTS
+============================================================
+Number of guesses:         2
+Known in final state:      7 / 7
+Max steps used:            7
+------------------------------------------------------------
+Guessed variable(s) (2):
+  x, s
+============================================================
 ```
 
-### SMT
+---
 
-```bash
-python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver smt --maxguess 2 --maxsteps 5
-```
-### Terminal output
+## Input File Format
 
-```bash
-Generating the SMT model ...
-SMT model was generated after 0.01 seconds
-Checking the satisfiability of the constructed SMT model using z3 ...
-Checking was finished after 0.00 seconds
-Number of guesses: 2
-Number of known variables in the final state: 7 out of 7
-The following 2 variable(s) are guessed:
-s, v
-```
+The input file is a plain text file with the following sections:
 
-### Example 3
+```text
+# Lines starting with '#' are comments
 
-### MILP
-```bash
-python3 autoguess.py --inputfile ciphers/Example3/relationfile.txt --solver milp --maxsteps 3
-```
+# Optional: algebraic relations over GF(2) (requires preprocessing)
+algebraic relations
+X1*X4 + X2*X5 + X1 + X3 + X4
+X2*X3 + X1*X6 + X3*X4 + X1
 
-### Terminal output
+# Connection relations (symmetric or implication)
+connection relations
+X3, X5, X2             # Symmetric: if all but one are known, deduce the last
+X1, X2, X4, X6 => X5   # Implication: if LHS known, deduce RHS
 
-```bash
-Generating the MILP model ...
-MILP model was generated after 0.00 seconds
-Set parameter Username
-Set parameter LicenseID to value 2707288
-Academic license - for non-commercial use only - expires 2026-09-11
-Read LP format model from file temp/milp_mg50_ms3_min_a6f77139d2b6ae9367ff6efa126040.lp
-Reading time = 0.00 seconds
-: 176 rows, 110 columns, 574 nonzeros
-Set parameter MIPFocus to value 0
-Set parameter Threads to value 0
-Set parameter OutputFlag to value 1
-Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[arm] - Darwin 25.0.0 25A362)
+# Variables known at the start
+known
+X2
 
-CPU model: Apple M3 Pro
-Thread count: 11 physical cores, 11 logical processors, using up to 11 threads
-
-Optimize a model with 176 rows, 110 columns and 574 nonzeros
-Model fingerprint: 0x7dfef622
-Variable types: 0 continuous, 110 integer (110 binary)
-Coefficient statistics:
-  Matrix range     [1e+00, 5e+00]
-  Objective range  [1e+00, 1e+00]
-  Bounds range     [1e+00, 1e+00]
-  RHS range        [1e+00, 5e+01]
-Found heuristic solution: objective 8.0000000
-Presolve removed 94 rows and 66 columns
-Presolve time: 0.00s
-Presolved: 82 rows, 44 columns, 286 nonzeros
-Variable types: 0 continuous, 44 integer (44 binary)
-
-Root relaxation: objective 4.130435e-01, 49 iterations, 0.00 seconds (0.00 work units)
-
-    Nodes    |    Current Node    |     Objective Bounds      |     Work
- Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
-
-     0     0    0.41304    0   29    8.00000    0.41304  94.8%     -    0s
-H    0     0                       3.0000000    0.41304  86.2%     -    0s
-     0     0    1.25000    0   30    3.00000    1.25000  58.3%     -    0s
-     0     0    2.00000    0   26    3.00000    2.00000  33.3%     -    0s
-
-Cutting planes:
-  Gomory: 4
-  Cover: 20
-  Clique: 10
-  Zero half: 3
-  RLT: 11
-
-Explored 1 nodes (117 simplex iterations) in 0.01 seconds (0.01 work units)
-Thread count was 11 (of 11 available processors)
-
-Solution count 2: 3 8 
-
-Optimal solution found (tolerance 1.00e-04)
-Best objective 3.000000000000e+00, best bound 3.000000000000e+00, gap 0.0000%
-Solving process was finished after 0.01 seconds
-Number of guesses: 3
-Number of known variables in the final state: 8 out of 8
-The following 3 variable(s) are guessed:
-x0, x3, x4
-```
-
-### Example 4
-
-### CP
-
-```bash
-python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solver cp --maxsteps 10 --preprocess 1 --D 2
-```
-
-### Terminal output
-
-```bash
-OR Tools is available
-Preprocessing phase was started - 2025-11-01 00:29:08.364541
-Number of algebraic equations: 7
-Number of algebraic variables: 4
-Number of algebraic monomials: 11
-Spectrum of degrees: [2]
-Macaulay matrix was generated in full matrixspace of 7 by 11 sparse matrices over finite field of size 2
-Gaussian elimination started - 2025-11-01 00:29:08.870502
-#Dependent variables: 7
-#Free variables: 3
-Gaussian elimination was finished after 0.2548 seconds
-Result written to temp/macaulay_basis_f589f77fd1ad8bf0de119507f00cfe.txt in 0.0002 seconds
-Preprocessing phase was finished after 0.8152 seconds
-Number of guessed variables is set to be at most 10
-Generating the CP model ...
-CP model was generated after 0.01 seconds
-Solving the CP model with cp-sat ...
-Solving process was finished after 0.31 seconds
-Number of guesses: 2
-Number of known variables in the final state: 10 out of 10
-The following 2 variable(s) are guessed: 
-X4, RKKK13 (represents: X2 * X4)
-```
-
-You can choose specific solver also e.g. cbc (coin-bc)
-```bash
-python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solver cp --cpsolver cbc --maxsteps 10 --preprocess 1 --D 2
-```
-### Terminal output
-
-```bash
-OR Tools is available
-Preprocessing phase was started - 2025-11-01 00:32:39.110815
-Number of algebraic equations: 7
-Number of algebraic variables: 4
-Number of algebraic monomials: 11
-Spectrum of degrees: [2]
-Macaulay matrix was generated in full matrixspace of 7 by 11 sparse matrices over finite field of size 2
-Gaussian elimination started - 2025-11-01 00:32:39.446340
-#Dependent variables: 7
-#Free variables: 3
-Gaussian elimination was finished after 0.2443 seconds
-Result written to temp/macaulay_basis_d29165f9726d47fb001886e495d8ba.txt in 0.0002 seconds
-Preprocessing phase was finished after 0.6315 seconds
-Number of guessed variables is set to be at most 10
-Generating the CP model ...
-CP model was generated after 0.01 seconds
-Solving the CP model with cp-sat ...
-Solving process was finished after 0.31 seconds
-Number of guesses: 2
-Number of known variables in the final state: 10 out of 10
-The following 2 variable(s) are guessed:
-X4, PNEM13 (represents: X2 * X4)
-```
-
-The available cp solvers depends on the installation. Extra solvers you have to install.
-
-### SAT
-
-```bash
-python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solver sat --maxguess 1 --maxsteps 5 --preprocess 1 --D 3
-```
-
-### Terminal output
-
-```bash
-Preprocessing phase was started - 2025-11-01 00:31:41.505979
-Number of algebraic equations: 7
-Number of algebraic variables: 4
-Number of algebraic monomials: 11
-Spectrum of degrees: [2]
-Macaulay matrix was generated in full matrixspace of 35 by 15 sparse matrices over finite field of size 2
-Gaussian elimination started - 2025-11-01 00:31:41.872879
-#Dependent variables: 13
-#Free variables: 1
-Gaussian elimination was finished after 0.2504 seconds
-Result written to temp/macaulay_basis_b9524db9f1e0f58b6bb9ad0c3f96d1.txt in 0.0002 seconds
-Preprocessing phase was finished after 0.6717 seconds
-Generating the SAT model ...
-SAT model was generated after 0.00 seconds
-
-Solving with cadical153 ...
-Time used by SAT solver: 0.00 seconds
-Number of guesses: 1
-Number of known variables in the final state: 14 out of 14
-The following 1 variable(s) are guessed:
+# Variables that must be determined
+target
+X1
 X3
+X4
+X5
+X6
 
+end
 ```
 
-### SMT
+**Relation types:**
+- **Symmetric** (`a, b, c`): If all variables except one are known, the remaining one can be deduced.
+- **Implication** (`a, b => c`): If all LHS variables are known, the RHS can be deduced.
+- **Algebraic** (`X1*X2 + X3 + X4`): Polynomial relations over GF(2). Requires `--preprocess 1 --D <degree>` to expand via Macaulay matrix.
+
+Many example input files are provided in the [ciphers/](ciphers/) directory.
+
+---
+
+## Command Line Reference
+
+```
+python3 autoguess.py [options]
+```
+
+**Core options:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `-i`, `--inputfile FILE` | Input relation file | `ciphers/AES/...` |
+| `-o`, `--outputfile FILE` | Output file for detailed results | `output` |
+| `-s`, `--solver SOLVER` | Solver: `sat`, `cp`, `milp`, `smt`, `mark`, `elim`, `propagate` | `sat` |
+| `-mg`, `--maxguess N` | Upper bound on guessed variables | Auto (= #target vars) |
+| `-ms`, `--maxsteps N` | Depth of search (state copies) | Auto (= #variables) |
+
+**Solver selection:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `-sats`, `--satsolver` | SAT solver: `cadical153`, `glucose3`, `glucose4`, `lingeling`, `minisat22`, ... | `cadical153` |
+| `-cps`, `--cpsolver` | CP solver: `cp-sat`, `gecode`, `chuffed`, `or-tools`, ... | `cp-sat` |
+| `-smts`, `--smtsolver` | SMT solver: `z3`, `yices`, `btor`, `cvc5`, ... | `z3` |
+| `-milpd`, `--milpdirection` | MILP: `min` or `max` | `min` |
+| `-cpopt`, `--cpoptimization` | CP: `1` = minimize, `0` = satisfy | `1` |
+
+**New features:**
+
+| Flag | Description |
+|---|---|
+| `--findmin` | Find the minimum number of guesses (incremental for SAT, descent for SMT) |
+| `-kn`, `--known VAR1,VAR2,...` | Extra known variables (in addition to those in the relation file) |
+| `--reducebasis` | Reduce a guess basis via propagation (use with `-kn`) |
+| `--nograph` | Skip graph generation (faster) |
+| `-t`, `--threads N` | Thread count for MILP/CP solvers (0 = auto) |
+
+**Preprocessing & misc:**
+
+| Flag | Description | Default |
+|---|---|---|
+| `-prep`, `--preprocess` | Enable preprocessing (Macaulay matrix) | `0` |
+| `-D` | Degree for Macaulay matrix | `2` |
+| `-tl`, `--timelimit N` | Time limit in seconds | unlimited |
+| `-tk`, `--tikz` | Generate TikZ LaTeX code | `0` |
+| `-dgl`, `--dglayout` | Graphviz layout: `dot`, `circo`, `neato`, `fdp`, ... | `dot` |
+| `-log` | Save intermediate models to `temp/` | `0` |
+
+> **Note on defaults:** When `-mg` and `-ms` are not specified, they are automatically derived from the input file. `maxguess` defaults to the number of target variables, and `maxsteps` defaults to the total number of variables. This usually gives optimal results without manual tuning.
+
+---
+
+## Examples
+
+### Example 1 — Simple Connection Relations
+
+**SAT solver:**
+```bash
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --maxguess 2 --maxsteps 5
+```
+
+```
+============================================================
+SAT SOLVER — Taken from https://doi.org/10.1007/978-3-642-00862-7_11
+============================================================
+Variables: 7 | Relations: 5
+Max guess: 2 | Max steps: 5
+Solver: cadical153
+------------------------------------------------------------
+MODEL GENERATION
+------------------------------------------------------------
+SAT model generated in 0.00 seconds
+------------------------------------------------------------
+SOLVING
+------------------------------------------------------------
+Solving finished in 0.00 seconds
+
+============================================================
+RESULTS
+============================================================
+Number of guesses:         2
+Known in final state:      7 / 7
+Max steps used:            5
+------------------------------------------------------------
+Guessed variable(s) (2):
+  x, s
+============================================================
+```
+
+**With a different SAT solver (e.g., glucose3):**
+```bash
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --satsolver glucose3 --maxguess 2 --maxsteps 5
+```
+
+**CP solver:**
+```bash
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s cp --maxsteps 5
+```
+
+**SMT solver:**
+```bash
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s smt --maxguess 2 --maxsteps 5
+```
+
+### Example 4 — Algebraic Relations with Preprocessing
+
+This example demonstrates algebraic relations over GF(2). The `--preprocess` flag expands them via the Macaulay matrix before solving.
 
 ```bash
-python3 autoguess.py --inputfile ciphers/Example4/algebraic_relations.txt --solver smt --maxguess 1 --maxsteps 5 --preprocess 1 --D 3
+python3 autoguess.py -i ciphers/Example4/algebraic_relations.txt -s sat --maxguess 1 --maxsteps 5 --preprocess 1 --D 3
 ```
 
-### Terminal output
+### SKINNY-TK3 — Key Bridging with Findmin
+
+Find the minimum guess basis for 23-round SKINNY-TK3 zero-correlation key bridging:
 
 ```bash
-Preprocessing phase was started - 2025-07-25 23:03:44.792831
-Algebrize input polynomials done in 0.0146 seconds
-Number of algebraic equations: 7
-Number of algebraic variables: 4
-Number of algebraic monomials: 11
-Spectrum of degrees: [2]
-Build macaulay polynomials done in 0.0027 seconds
-Macaulay matrix was generated in 0.0210 seconds
-The matrix is of dimension: 35×15 over GF(2)
-#Dependent variables: 13
-#Free variables: 1
-Gaussian elimination was finished after 0.2645 seconds
-Result was written into temp/macaulay_basis_175aa65b3c3f0671d0216d01722934.txt after 0.0002 seconds
-Preprocessing phase was finished after 0.9653 seconds
-Generating the SMT model ...
-SMT model was generated after 0.02 seconds
-Checking the satisfiability of the constructed SMT model using z3 ...
-Checking was finished after 0.01 seconds
-Number of guesses: 1
-Number of known variables in the final state: 14 out of 14
-The following 1 variable(s) are guessed:
-X3
+python3 autoguess.py -i ciphers/SKINNY-TK3/relationfile_skinnytk3zckb_23r_mg25_ms12_z16_13.txt -s sat --findmin -mg 25
 ```
 
-### PRESENT80
+```
+============================================================
+FIND-MIN MODE: searching for minimum guesses (starting from 25)
+============================================================
+  max_guess = 25:  SAT  — a guess basis of size 25 exists  (0.43s)
+  max_guess = 24:  UNSAT  (0.27s)
 
-### CP
+############################################################
+FIND-MIN RESULT: minimum number of guesses = 25
+Total findmin time: 0.87s
+############################################################
+
+Re-solving with max_guess = 25 for detailed output ...
+
+============================================================
+RESULTS
+============================================================
+Number of guesses:         25
+Known in final state:      36 / 104
+Max steps used:            104
+------------------------------------------------------------
+Guessed variable(s) (25):
+  tk2_2, tk3_2, tk2_5, tk3_5, tk1_9, tk3_9, sk_17_0, sk_19_5, ...
+============================================================
+```
+
+---
+
+## New Features
+
+### Find Minimum Guesses (`--findmin`)
+
+Automatically finds the smallest number of guesses needed. For SAT, this uses **incremental solving** with ITotalizer + assumption-based bounds — the solver is created once and learned clauses are reused, making it very efficient.
 
 ```bash
-python3 autoguess.py --inputfile ciphers/PRESENT/relationfile_present_kb_26r_mg60_ms10.txt --solver cp --preprocess 1 --D 2 --maxguess 60 --maxsteps 10
+# SAT (incremental, fast)
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --findmin
+
+# SMT (per-iteration descent, slower)
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s smt --findmin
 ```
 
-### Terminal output
+### Extra Known Variables (`--known`)
+
+Supply additional known variables without editing the relation file:
+
 ```bash
-OR Tools is available
-Preprocessing phase started - 2025-07-29 05:44:31.168201
-Macaulay matrix was generated in full matrixspace of 1976 by 2152 sparse matrices over finite field of size 2
-Gaussian elimination started - 2025-07-29 05:44:33.512416
-#Dependent variables: 1976
-#Free variables: 176
-Gaussian elimination was finished after 1.7483 seconds
-Result written to temp/macaulay_basis_219a8f4708c96ebb44cd37b4bd335a.txt in 0.9473 seconds
-Preprocessing phase finished after 5.3408 seconds
-Generating the CP model ...
-CP model was generated after 476.22 seconds
-Solving the CP model with cp-sat ...
-Solving process was finished after 33.31 seconds
-Number of guesses: 60
-Number of known variables in the final state: 1391 out of 2160
-The following 60 variable(s) are guessed:
-k_26_0, k_26_2, k_5_23, k_6_67, k_7_5, k_7_7, k_7_13, k_7_72, k_8_8, k_8_9, k_8_10, k_8_23, k_12_12, k_12_76, k_13_11, k_13_48, k_13_49, k_14_28, k_14_65, k_15_14, k_15_46, k_15_50, k_15_51, k_15_73, k_16_10, k_16_13, k_16_74, k_17_6, k_17_58, k_18_29, k_18_49, k_19_35, k_19_66, k_20_50, k_21_37, k_21_71, k_21_77, k_22_31, k_22_41, k_22_48, k_22_53, k_23_10, k_23_37, k_23_49, k_23_52, k_23_57, k_23_58, k_23_73, k_24_13, k_24_20, k_24_24, k_24_37, k_24_39, k_24_52, k_24_78, k_25_9, k_25_38, k_26_59, k_26_60, k_26_61
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s sat --known x,s --maxsteps 5
 ```
+
+### Reduce Basis (`--reducebasis`)
+
+Given a known guess basis, try to reduce it using propagation:
+
+```bash
+python3 autoguess.py -i ciphers/Example1/relationfile.txt --reducebasis --known x,s,v
+```
+
+### Propagation Mode
+
+A lightweight solver-free mode that iteratively deduces variables from the known set:
+
+```bash
+python3 autoguess.py -i ciphers/Example1/relationfile.txt -s propagate --known x,s
+```
+
+---
+
+## Solver-Specific Notes
+
+| Solver | Strengths | Notes |
+|---|---|---|
+| **SAT** (`cadical153`) | Fast, supports `--findmin` incrementally | Default. Best for most problems. |
+| **CP** (`cp-sat`) | Good for optimization (`-cpopt 1`) | Requires MiniZinc. Falls back to gecode/chuffed if cp-sat unavailable. |
+| **MILP** (Gurobi) | Optimal solutions, good for large problems | Requires Gurobi license. Use `-t` for threads. |
+| **SMT** (`z3`) | Flexible, supports bitvector reasoning | Slower than SAT for pure boolean problems. |
+| **Propagate** | No external solver needed | Only deduces from known variables, no search. |
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**`ModuleNotFoundError: No module named 'minizinc'`**
+CP solver requires: `pip install minizinc` + system MiniZinc binary.
+
+**`ModuleNotFoundError: No module named 'pysmt'`**
+SMT solver requires: `pip install pysmt && pysmt-install --z3`
+
+**`ModuleNotFoundError: No module named 'gurobipy'`**
+MILP solver requires: `pip install gurobipy` + valid Gurobi license.
+
+**`WARNING: Could not render graph`**
+Install the Graphviz system binary: `brew install graphviz` (macOS) or `apt install graphviz` (Ubuntu). Or use `--nograph` to skip.
+
+**`The problem is UNSAT`**
+Increase `--maxguess` and/or `--maxsteps`. Use `--findmin` to automatically find the minimum.
+
+### Performance Tips
+
+- Use `--nograph` to skip graph rendering for faster runs.
+- Use `--findmin` with SAT for efficient minimum search (incremental solver).
+- For large problems, use `-t N` to control thread count with MILP/CP solvers.
+- The `--preprocess 1 --D N` flag can significantly reduce problem size for algebraic relations.
+
+---
+
+## Credits
+
+This project is based on the [Autoguess](https://github.com/hadipourh/autoguess) tool by [Hosein Hadipour](mailto:hsn.hadipour@gmail.com).
+
+**Paper:** [Autoguess: A Tool for Finding Guess-and-Determine Attacks and Key Bridges](https://doi.org/10.1007/978-3-030-81652-0_1), ACNS 2021.
+
+```bibtex
+@inproceedings{hadipourS21,
+  author    = {Hosein Hadipour and Maria Eichlseder},
+  title     = {Autoguess: A Tool for Finding Guess-and-Determine Attacks and Key Bridges},
+  booktitle = {ACNS 2021},
+  series    = {LNCS},
+  volume    = {12727},
+  pages     = {230--250},
+  publisher = {Springer},
+  year      = {2021},
+  doi       = {10.1007/978-3-030-81652-0_1}
+}
+```
+
+## License
+
+MIT License. See [autoguess.py](autoguess.py) for details.

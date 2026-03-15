@@ -10,11 +10,12 @@ import time
 from pysat import solvers
 from pysat import formula
 import random
-from .inputparser import read_relation_file
+from core.inputparser import read_relation_file
 from threading import Timer
 import z3
 from core.parsesolution import parse_solver_solution
-# from core.graphdrawer import draw_graph
+from core.graphdrawer import draw_graph
+from core.varnames import step_var, path_var
 from config import TEMP_DIR
 
 
@@ -33,22 +34,23 @@ class ReduceGDtoZ3SMT:
     """
     count = 0
 
-    def __init__(self, inputfile_name=None, outputfile_name='output', max_guess=0, max_steps=0, sat_solver='cadical',\
-        tikz=0, preprocess=1, D=2, dglayout="dot", log=0):
+    def __init__(self, inputfile_name=None, outputfile_name='output', max_guess=0, max_steps=0, sat_solver='cadical153',\
+        tikz=0, preprocess=1, D=2, dglayout="dot", drawgraph=True, log=0, extra_known=None):
         self.inputfile_name = inputfile_name
         self.output_dir = outputfile_name
         self.rnd_string_tmp = '%030x' % random.randrange(16**30)
         self.max_guess = max_guess
         self.max_steps = max_steps
         self.sat_solver_name = sat_solver
-        self.supported_sat_solvers = list(solvers.SolverNames.cadical) + list(solvers.SolverNames.glucose4) + list(solvers.SolverNames.glucose3) + list(solvers.SolverNames.lingeling) + list(solvers.SolverNames.maplesat) + list(
-            solvers.SolverNames.maplechrono) + list(solvers.SolverNames.maplecm) + list(solvers.SolverNames.minicard) + list(solvers.SolverNames.minisat22) + list(solvers.SolverNames.minisatgh)
-        assert(sat_solver in self.supported_sat_solvers)
+        self.supported_sat_solvers = [s for s in solvers.SolverNames.__dict__.keys() if not s.startswith('__')]
+        if self.sat_solver_name not in self.supported_sat_solvers:
+            raise ValueError(f"Unsupported SAT solver: {self.sat_solver_name}")
         self.dglayout = dglayout
+        self.draw_graph = drawgraph
         self.log = log
         ###############################
         # Read and parse the input file
-        parsed_data = read_relation_file(self.inputfile_name, preprocess=preprocess, D=D, log=self.log)
+        parsed_data = read_relation_file(self.inputfile_name, preprocess=preprocess, D=D, log=self.log, extra_known=extra_known)
         self.dummy_mapping = parsed_data.get("dummy_mapping", {})
         self.problem_name = parsed_data['problem_name']
         self.variables = parsed_data['variables']
@@ -108,21 +110,21 @@ class ReduceGDtoZ3SMT:
         #     v, 0) for v in self.variables if v not in self.known_variables]))
         # self.solver.add(z3.Sum([z3.If(initial_state_vars[i], 1, 0)
         #                     for i in range(len(initial_state_vars))]) <= self.max_guess)
-        initial_state_vars = list(map(lambda x: (z3.Bool(x), 1), ['%s_%d' % (
-            v, 0) for v in self.variables if v not in self.known_variables]))
+        _known_set = set(self.known_variables)
+        initial_state_vars = list(map(lambda x: (z3.Bool(x), 1), [step_var(v, 0) for v in self.variables if v not in _known_set]))
         if initial_state_vars != []:
             self.solver.add(z3.PbLe([initial_state_vars[i] for i in range(
                 len(initial_state_vars))], self.max_guess))
 
         final_state_target_vars = list(
-            map(z3.Bool, ['%s_%d' % (v, self.max_steps) for v in self.target_variables]))
+            map(z3.Bool, [step_var(v, self.max_steps) for v in self.target_variables]))
         self.solver.add(z3.And(final_state_target_vars) == True)
         for v in self.known_variables:
             if v != '':
-                self.solver.add(z3.Bool('%s_0' % v) == True)
+                self.solver.add(z3.Bool(step_var(v, 0)) == True)
         for v in self.notguessed_variables:
             if v != '':
-                self.solver.add(z3.Bool('%s_0' % v) == False)
+                self.solver.add(z3.Bool(step_var(v, 0)) == False)
 
     def generate_smt_constraints(self):
         """
@@ -131,10 +133,9 @@ class ReduceGDtoZ3SMT:
         """
         for step in range(self.max_steps):
             for v in self.variables:
-                v_new = '%s_%d' % (v, step + 1)
+                v_new = step_var(v, step + 1)
                 tau = len(self.deductions[v])
-                v_path_variables = ['%s_%d_%d' %
-                                    (v, step + 1, i) for i in range(tau)]
+                v_path_variables = [path_var(v, step + 1, i) for i in range(tau)]
                 #####################################-State variable constraints-#####################################
                 ######################################################################################################
                 ######################################################################################################
@@ -146,7 +147,7 @@ class ReduceGDtoZ3SMT:
                 ######################################################################################################
                 for i in range(0, tau):
                     v_connected_variables = list(
-                        map(z3.Bool, ['%s_%d' % (var, step) for var in self.deductions[v][i]]))
+                        map(z3.Bool, [step_var(var, step) for var in self.deductions[v][i]]))
                     LHS = z3.And(v_connected_variables)
                     RHS = z3.Bool(v_path_variables[i])
                     self.solver.add(LHS == RHS)
@@ -233,26 +234,8 @@ class ReduceGDtoZ3SMT:
 
         self.convert_smt_to_cnf()
         cnf_formula = formula.CNF(self.cnf_file_path)
-        if self.sat_solver_name in solvers.SolverNames.cadical:
-            sat_solver = solvers.Cadical()
-        elif self.sat_solver_name in solvers.SolverNames.glucose4:
-            sat_solver = solvers.Glucose4()
-        elif self.sat_solver_name in solvers.SolverNames.glucose3:
-            sat_solver = solvers.Glucose3()
-        elif self.sat_solver_name in solvers.SolverNames.lingeling:
-            sat_solver = solvers.Lingeling()
-        elif self.sat_solver_name in solvers.SolverNames.maplesat:
-            sat_solver = solvers.Maplesat()
-        elif self.sat_solver_name in solvers.SolverNames.maplechrono:
-            sat_solver = solvers.MapleChrono()
-        elif self.sat_solver_name in solvers.SolverNames.maplecm:
-            sat_solver = solvers.MapleCM()
-        elif self.sat_solver_name in solvers.SolverNames.minicard:
-            sat_solver = solvers.Minicard()
-        elif self.sat_solver_name in solvers.SolverNames.minisat22:
-            sat_solver = solvers.Minisat22()
-        elif self.sat_solver_name in solvers.SolverNames.minisatgh:
-            sat_solver = solvers.MinisatGH()
+        if self.sat_solver_name in solvers.SolverNames.__dict__.keys():
+            sat_solver = solvers.Solver(name=self.sat_solver_name)
         else:
             print('Choose a solver from the following list please:%s' %
                   ', '.join(self.supported_sat_solvers))
@@ -262,8 +245,11 @@ class ReduceGDtoZ3SMT:
         start_time = time.time()
         # Regarding time_limit: Note that only MiniSat-like solvers support this functionality (e.g. Cadical and Lingeling do not
         # support it).
+        _no_timelimit_solvers = set()
+        for _sn in ('cadical103', 'cadical153', 'cadical195', 'lingeling'):
+            _no_timelimit_solvers.update(getattr(solvers.SolverNames, _sn, ()))
         if self.time_limit != -1:
-            if self.sat_solver_name in list(solvers.SolverNames.cadical) + list(solvers.SolverNames.lingeling):
+            if self.sat_solver_name in _no_timelimit_solvers:
                 print('time_limit is not supported for the chosen sat solver ... ')
                 result = sat_solver.solve()
             else:
@@ -278,14 +264,15 @@ class ReduceGDtoZ3SMT:
             self.satsolver_solution = sat_solver.get_model()
             self.solutions = [0]*(self.max_steps + 1)
             for step in range(self.max_steps + 1):
-                state_vars = ['%s_%d' % (v, step) for v in self.variables]
+                state_vars = [step_var(v, step) for v in self.variables]
                 state_values = list(
                     map(lambda x: int(self.satsolver_solution[self.dimacs_vars_dict[x] - 1] > 0),
                         [st_var for st_var in state_vars]))
                 self.solutions[step] = dict(zip(state_vars, state_values))
             parse_solver_solution(self)
-            # draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,\
-            #      self.output_dir, self.tikz, self.dglayout)
+            if self.draw_graph:
+                draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,
+                           self.output_dir, self.tikz, self.dglayout)
         elif result == False:
             print('The problem is UNSAT!\n')
         else:
@@ -327,15 +314,15 @@ class ReduceGDtoZ3SMT:
             self.solver_model = self.solver.model()
             self.solutions = [0]*(self.max_steps + 1)
             for step in range(self.max_steps + 1):
-                state_vars = ['%s_%d' % (v, step) for v in self.variables]
-                z3_state_vars = list(
-                    map(z3.Bool, ['%s_%d' % (v, step) for v in self.variables]))
+                state_vars = [step_var(v, step) for v in self.variables]
+                z3_state_vars = list(map(z3.Bool, state_vars))
                 state_values = list(
                     map(int, [z3.is_true(self.solver_model[st_var]) for st_var in z3_state_vars]))
                 self.solutions[step] = dict(zip(state_vars, state_values))
             parse_solver_solution(self)
-            # draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,\
-            #      self.output_dir, self.tikz)
+            if self.draw_graph:
+                draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,
+                           self.output_dir, self.tikz, self.dglayout)
         elif result == z3.unsat:
             print(
                 'The model is UNSAT!\nIncrease the max_guess, and max_steps paramters, and try again.')

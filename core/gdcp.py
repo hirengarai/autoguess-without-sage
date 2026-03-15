@@ -11,7 +11,8 @@ import random
 import minizinc
 from core.inputparser import read_relation_file
 from core.parsesolution import parse_solver_solution
-# from core.graphdrawer import draw_graph
+from core.graphdrawer import draw_graph
+from core.varnames import step_var, path_var
 from config import TEMP_DIR
 import datetime
 import subprocess
@@ -33,8 +34,8 @@ except FileNotFoundError:
 class ReduceGDtoCP:
     count = 0
 
-    def __init__(self, inputfile_name=None, outputfile_name='output', max_guess=0, max_steps=0, cp_solver_name='gecode',
-        cp_optimization=0, tikz=0, preprocess=1, D=2, dglayout="dot", log="0"):
+    def __init__(self, inputfile_name=None, outputfile_name='output', max_guess=0, max_steps=0, cp_solver_name='cp-sat',
+        cp_optimization=0, tikz=0, preprocess=1, D=2, dglayout="dot", drawgraph=True, log="0", threads=0, extra_known=None):
         self.inputfile_name = inputfile_name
         self.output_dir = outputfile_name     
         self.rnd_string_tmp = '%030x' % random.randrange(16**30)
@@ -42,45 +43,38 @@ class ReduceGDtoCP:
         self.max_steps = max_steps
         self.cp_solver_name = cp_solver_name
         self.dglayout = dglayout
-        self.log = log  
+        self.draw_graph = drawgraph
+        self.log = log
 
-        # self.supported_cp_solvers = [
-        #     'gecode', 'chuffed', 'cbc', 'gurobi', 'picat', 'scip', 'choco', 'or-tools', 'cp-sat', 'com.google.ortools.sat']
-        # self.supported_cp_solvers = [
-        #     'cbc',         # COIN-BC
-        #     'coinbc',      # COIN-BC alternative tag
-        #     'cp',          # OR-Tools CP-SAT tag
-        #     'cp-sat',      # OR-Tools CP-SAT full name
-        #     'gurobi',      # Gurobi
-        #     'highs',       # HiGHS
-        #     'scip',        # SCIP
-        #     'mip',         # SCIP alternative tag
-        #     'xpress',      # Xpress
-        #     'gecode'
-        # ]
-        self.supported_cp_solvers = ['gecode', 'chuffed', 'cbc', 'coinbc', 'cp', 'cp-sat', 'com.google.ortools.sat',
-        'gurobi', 'highs', 'scip', 'mip', 'xpress', 'picat', 'choco', 'or-tools']
-        assert(self.cp_solver_name in self.supported_cp_solvers)                
-
-        if ortools_available:
-            if self.cp_solver_name in ["or-tools", "cp-sat", "com.google.ortools.sat"]:
-                try:
-                    self.cp_solver = minizinc.Solver.lookup("com.google.ortools.sat")
-                    self.cp_solver_name = "com.google.ortools.sat"
-                except:
-                    self.cp_solver = minizinc.Solver.lookup("cp-sat")
-                    self.cp_solver_name = "cp-sat"
-            else:
-                self.cp_solver = minizinc.Solver.lookup(self.cp_solver_name)
-        else:
-            self.cp_solver = minizinc.Solver.lookup(self.cp_solver_name)
+        # Dynamic solver detection with fallback
+        available_solvers = list(minizinc.default_driver.available_solvers().keys())
+        if self.cp_solver_name not in available_solvers:
+            _preferred = ["cp-sat", "gecode", "chuffed"]
+            fallback = None
+            for _s in _preferred:
+                if _s in available_solvers:
+                    fallback = _s
+                    break
+            if fallback is None and available_solvers:
+                fallback = available_solvers[0]
+            if fallback is None:
+                raise RuntimeError(
+                    f"Solver '{self.cp_solver_name}' is not available and no "
+                    f"fallback solver found.  Available: {available_solvers}"
+                )
+            print(f"WARNING: Solver '{self.cp_solver_name}' not available.")
+            print(f"  Available: {available_solvers}")
+            print(f"  Falling back to: {fallback}")
+            self.cp_solver_name = fallback
+        self.cp_solver = minizinc.Solver.lookup(self.cp_solver_name)
 
         self.cp_optimization = cp_optimization
-        self.nthreads = 16
+        self.nthreads = threads if threads > 0 else (os.cpu_count() or 1)
         self.cp_boolean_variables = []
+        self._cp_vars_set = set()
         self.cp_constraints = ''
 
-        parsed_data = read_relation_file(self.inputfile_name, preprocess, D, self.log)
+        parsed_data = read_relation_file(self.inputfile_name, preprocess, D, self.log, extra_known=extra_known)
         self.dummy_mapping = parsed_data.get('dummy_mapping', {})
         self.problem_name = parsed_data['problem_name']
         self.variables = parsed_data['variables']
@@ -125,30 +119,31 @@ class ReduceGDtoCP:
     
     def update_variables_list(self, new_vars):
         for v in new_vars:
-            if v not in self.cp_boolean_variables:
+            if v not in self._cp_vars_set:
+                self._cp_vars_set.add(v)
                 self.cp_boolean_variables.append(v)
-        
+
     def generate_initial_conditions(self):
-        initial_state_vars = ['%s_%d' % (v, 0) for v in self.variables if v not in self.known_variables]
+        initial_state_vars = [step_var(v, 0) for v in self.variables if v not in self.known_variables]
         if initial_state_vars:
             self.update_variables_list(initial_state_vars)
             self.cp_constraints += 'constraint %s <= %d;\n' % (' + '.join(initial_state_vars), self.max_guess)
 
-        final_state_target_vars = ['%s_%d' % (v, self.max_steps) for v in self.target_variables]
+        final_state_target_vars = [step_var(v, self.max_steps) for v in self.target_variables]
         self.update_variables_list(final_state_target_vars)
         for fv in final_state_target_vars:
             self.cp_constraints += 'constraint %s = 1;\n' % fv
 
         for v in self.known_variables:
             if v != '':
-                self.cp_constraints += 'constraint %s_0 = 1;\n' % v
+                self.cp_constraints += 'constraint %s = 1;\n' % step_var(v, 0)
 
         for v in self.notguessed_variables:
             if v != '':
-                self.cp_constraints += 'constraint %s_0 = 0;\n' % v
+                self.cp_constraints += 'constraint %s = 0;\n' % step_var(v, 0)
 
     def generate_objective_function(self):
-        initial_state_vars = ['%s_%d' % (v, 0) for v in self.variables if v not in self.known_variables]
+        initial_state_vars = [step_var(v, 0) for v in self.variables if v not in self.known_variables]
         if self.cp_optimization == 1 and initial_state_vars:
             self.cp_constraints += 'solve minimize %s;\n' % ' + '.join(initial_state_vars)
         else:
@@ -157,15 +152,15 @@ class ReduceGDtoCP:
     def generate_cp_constraints(self):
         for step in range(self.max_steps):
             for v in self.variables:
-                v_new = f"{v}_{step + 1}"
+                v_new = step_var(v, step + 1)
                 tau = len(self.deductions[v])
-                v_path_variables = [f"{v}_{step + 1}_{i}" for i in range(tau)]
+                v_path_variables = [path_var(v, step + 1, i) for i in range(tau)]
                 self.update_variables_list([v_new] + v_path_variables)
-                self.cp_constraints += f"constraint {v_new} <-> {' \\/ '.join(v_path_variables)};\n"
+                self.cp_constraints += 'constraint %s <-> %s;\n' % (v_new, ' \\/ '.join(v_path_variables))
                 for i in range(tau):
-                    v_connected_variables = [f"{var}_{step}" for var in self.deductions[v][i]]
+                    v_connected_variables = [step_var(var, step) for var in self.deductions[v][i]]
                     self.update_variables_list(v_connected_variables)
-                    self.cp_constraints += f"constraint {v_path_variables[i]} <-> {' /\\ '.join(v_connected_variables)};\n"
+                    self.cp_constraints += 'constraint %s <-> %s;\n' % (v_path_variables[i], ' /\\ '.join(v_connected_variables))
 
     def make_model(self):
         print('Generating the CP model ...')
@@ -192,19 +187,20 @@ class ReduceGDtoCP:
         print(f'Solving the CP model with {self.cp_solver_name} ...')
         start_time = time.time()
         result = self.cp_inst.solve(timeout=time_limit, processes=nthreads, random_seed=rand_int)
-        if self.log == 0:
-            os.remove(self.cp_file_path)
         elapsed_time = time.time() - start_time
         print(f'Solving process was finished after {elapsed_time:.2f} seconds')
         if result.status in [minizinc.Status.OPTIMAL_SOLUTION, minizinc.Status.SATISFIED, minizinc.Status.ALL_SOLUTIONS]:
             self.solutions = [0] * (self.max_steps + 1)
             for step in range(self.max_steps + 1):
-                state_vars = ['%s_%d' % (v, step) for v in self.variables]
+                state_vars = [step_var(v, step) for v in self.variables]
                 state_values = list(map(lambda vx: int(result.solution[vx]), state_vars))
                 self.solutions[step] = dict(zip(state_vars, state_values))
+            if self.log == 0:
+                os.remove(self.cp_file_path)
             parse_solver_solution(self)
-            # draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,
-            #            self.output_dir, self.tikz, self.dglayout)
+            if self.draw_graph:
+                draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,
+                           self.output_dir, self.tikz, self.dglayout)
             return True
         elif result.status == minizinc.Status.UNSATISFIABLE:
             print('The model is UNSAT!\nIncrease the max_guess or max_steps parameters and try again.')

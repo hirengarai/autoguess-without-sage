@@ -9,11 +9,25 @@ from config import TEMP_DIR
 import os
 import time
 import random
+
+# Compatibility shim: newer pyboolector (>=3.2.4) moved BTOR_OPT_*
+# constants into BtorOption enum, but pySMT still references them as
+# module-level attributes.  Re-export them so pySMT can find them.
+try:
+    import pyboolector
+    if not hasattr(pyboolector, 'BTOR_OPT_MODEL_GEN'):
+        for _name in dir(pyboolector.BtorOption):
+            if _name.startswith('BTOR_OPT_'):
+                setattr(pyboolector, _name, getattr(pyboolector.BtorOption, _name))
+except ImportError:
+    pass  # pyboolector not installed; btor solver simply won't be available
+
 from pysmt.shortcuts import TRUE, Symbol, BVAdd, BVAnd, BVOr, BVMul, BVULE, BVZExt, Solver, types, BV, Equals, write_smtlib
 from math import ceil, log2
 from core.inputparser import read_relation_file
 from core.parsesolution import parse_solver_solution
-# from core.graphdrawer import draw_graph
+from core.graphdrawer import draw_graph
+from core.varnames import step_var, path_var
 
 class ReduceGDtoSMT:
     """
@@ -32,7 +46,7 @@ class ReduceGDtoSMT:
     count = 0
 
     def __init__(self, inputfile_name=None, outputfile_name='output', max_guess=0, max_steps=0, smt_solver_name='z3',\
-        tikz=0, preprocess=1, D=1, dglayout="dot", log=0):
+        tikz=0, preprocess=1, D=1, dglayout="dot", drawgraph=True, log=0, extra_known=None):
         self.inputfile_name = inputfile_name
         self.output_dir = outputfile_name
         self.rnd_string_tmp = '%030x' % random.randrange(16**30)
@@ -40,23 +54,27 @@ class ReduceGDtoSMT:
         self.max_steps = max_steps
         self.smt_solver_name = smt_solver_name
         self.dglayout = dglayout
+        self.draw_graph = drawgraph
         self.log = log
         # Supported SMT solvers:
         # msat      True (5.6.1)
-        # cvc4      True (1.7-prerelease)
-        # z3        True (4.8.8)
+        # cvc5      True (1.3.2)
+        # z3        True (4.16.0)
         # yices     True (2.6.2)
         # btor      True (3.2.1)
         # picosat   True (965)
         # bdd       True (2.0.3)
-        self.supported_smt_solvers = [
-            'msat', 'cvc4', 'z3', 'yices', 'btor', 'picosat', 'bdd']
+        try:
+            from pysmt.environment import get_env
+            self.supported_smt_solvers = sorted(get_env().factory._all_solvers.keys())
+        except Exception:
+            self.supported_smt_solvers = ['z3']
         assert(self.smt_solver_name in self.supported_smt_solvers)
         self.smt_solver = Solver(name=smt_solver_name, logic='QF_BV')
         self.smt_formula = TRUE()
         ###############################
         # Read and parse the input file
-        parsed_data = read_relation_file(self.inputfile_name, preprocess=preprocess, D=D, log=self.log)
+        parsed_data = read_relation_file(self.inputfile_name, preprocess=preprocess, D=D, log=self.log, extra_known=extra_known)
         self.dummy_mapping = parsed_data.get("dummy_mapping", {})
         self.problem_name = parsed_data['problem_name']
         self.variables = parsed_data['variables']
@@ -123,8 +141,8 @@ class ReduceGDtoSMT:
         known variables in the initial state
         """
 
-        initial_state_vars = ['%s_%d' % (
-            v, 0) for v in self.variables if v not in self.known_variables]
+        _known_set = set(self.known_variables)
+        initial_state_vars = [step_var(v, 0) for v in self.variables if v not in _known_set]
         if initial_state_vars != []:
             self.update_variables_dictionary(initial_state_vars)
             bv_length = ceil(log2(len(initial_state_vars))) + 1
@@ -134,25 +152,21 @@ class ReduceGDtoSMT:
                     self.variables_dictionary[iv], bv_length - 1))
             clause = BVULE(sum, BV(self.max_guess, width=bv_length))
             self.smt_solver.add_assertion(clause)
-            # self.smt_formula = self.smt_formula.And(clause)
 
-        final_state_target_vars = ['%s_%d' % (
-            v, self.max_steps) for v in self.target_variables]
+        final_state_target_vars = [step_var(v, self.max_steps) for v in self.target_variables]
         for fv in final_state_target_vars:
             clause = Equals(self.variables_dictionary[fv], BV(1, width=1))
             self.smt_solver.add_assertion(clause)
-            # self.smt_formula = self.smt_formula.And(clause)
 
         for v in self.known_variables:
             if v != '':
-                LHS = self.variables_dictionary[('%s_0' % v)]
+                LHS = self.variables_dictionary[step_var(v, 0)]
                 clause = Equals(LHS, BV(1, width=1))
                 self.smt_solver.add_assertion(clause)
-                # self.smt_formula = self.smt_formula.And(clause)
-            
+
         for v in self.notguessed_variables:
             if v != '':
-                LHS = self.variables_dictionary[('%s_0' % v)]
+                LHS = self.variables_dictionary[step_var(v, 0)]
                 clause = Equals(LHS, BV(0, width=1))
                 self.smt_solver.add_assertion(clause)
 
@@ -164,10 +178,9 @@ class ReduceGDtoSMT:
 
         for step in range(self.max_steps):
             for v in self.variables:
-                v_new = '%s_%d' % (v, step + 1)
+                v_new = step_var(v, step + 1)
                 tau = len(self.deductions[v])
-                v_path_variables = ['%s_%d_%d' %
-                                    (v, step + 1, i) for i in range(tau)]
+                v_path_variables = [path_var(v, step + 1, i) for i in range(tau)]
                 self.update_variables_dictionary([v_new] + v_path_variables)
                 #####################################-State variable constraints-#####################################
                 ######################################################################################################
@@ -183,8 +196,7 @@ class ReduceGDtoSMT:
                 ######################################################################################################
                 ######################################################################################################
                 for i in range(0, tau):
-                    v_connected_variables = ['%s_%d' % (
-                        var, step) for var in self.deductions[v][i]]
+                    v_connected_variables = [step_var(var, step) for var in self.deductions[v][i]]
                     self.update_variables_dictionary(v_connected_variables)
                     LHS = BV(1, width=1)
                     for vc in v_connected_variables:
@@ -244,7 +256,7 @@ class ReduceGDtoSMT:
             self.smt_solver_model = self.smt_solver.get_model()
             self.solutions = [0]*(self.max_steps + 1)
             for step in range(self.max_steps + 1):
-                state_vars = ['%s_%d' % (v, step) for v in self.variables]
+                state_vars = [step_var(v, step) for v in self.variables]
                 temp = list(
                     map(lambda vx: self.variables_dictionary[vx], state_vars))
                 state_values = list(
@@ -252,8 +264,9 @@ class ReduceGDtoSMT:
                 # state_values = list(map(lambda vx: self.smt_solver_model.get_py_value(vx), temp))
                 self.solutions[step] = dict(zip(state_vars, state_values))
             parse_solver_solution(self)
-            # draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,\
-            #      self.output_dir, self.tikz, self.dglayout)
+            if self.draw_graph:
+                draw_graph(self.vertices, self.edges, self.known_variables, self.guessed_vars,
+                           self.output_dir, self.tikz, self.dglayout)
             return True
         elif result == False:
             print(

@@ -91,7 +91,17 @@ def draw_graph(vertices, edges, known_variables, guessed_vars, output_dir, tikz,
 
     # Render the graph to PDF
     graph_file_name = output_dir + "_graph"
-    directed_graph.render(graph_file_name, cleanup=True)
+    try:
+        directed_graph.render(graph_file_name, cleanup=True)
+    except Exception as exc:
+        # Save the .gv source even if the dot binary is missing
+        src_path = graph_file_name + ".gv"
+        directed_graph.save(src_path)
+        print(f"WARNING: Could not render graph ({exc}).")
+        print(f"  Graphviz source saved to: {src_path}")
+        print(f"  To enable rendering, install the system packages:")
+        print(f"    Debian/Ubuntu: apt install graphviz libpangocairo-1.0-0")
+        print(f"    macOS:         brew install graphviz")
 
     # Generate TikZ/LaTeX code if requested
     if tikz == 1:

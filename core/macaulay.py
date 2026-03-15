@@ -1,3 +1,11 @@
+'''
+Created on Oct 4, 2020
+Updated by Hiren on May 5, 2025 (removed sage dependency)
+
+@author: Hosein Hadipour
+@contact: hsn.hadipour@gmail.com
+'''
+
 import time
 import sys
 import re
@@ -263,7 +271,7 @@ class Macaulay:
                     terms = []
                     for j, bit in enumerate(row):
                         if bit:
-                            mono = self.mons[j]             # e.g. (0,1,0,1,0,...)
+                            mono = self.mons[j]             
                             if sum(mono) == 0:
                                 # constant term
                                 terms.append('1')
