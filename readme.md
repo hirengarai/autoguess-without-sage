@@ -22,6 +22,10 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
     - [Optional Dependencies](#optional-dependencies)
   - [Example 1](#example-1)
   - [***CP***](#cp)
+  - [***SAT***](#sat)
+  - [***SMT***](#smt)
+  - [***MILP***](#milp)
+  - [***Propagate***](#propagate)
   - [Input File Format](#input-file-format)
   - [Command Line Reference](#command-line-reference)
   - [Examples](#examples)
@@ -120,7 +124,7 @@ Guessed variable(s) (2):
 ============================================================
 ```
 Using SAT solver
-##*** SAT***
+## ***SAT***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver sat --maxguess 2 --maxsteps 5
 ```
@@ -209,7 +213,7 @@ Guessed variable(s) (2):
 Total findmin search time: 0.00s
 ```
 Using SMT solver
-##*** SMT***
+## ***SMT***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver smt --maxguess 2 --maxsteps 5
 ```
@@ -233,7 +237,7 @@ Guessed variable(s) (2):
 ```
 
 Using MILP solver
-##*** MILP***
+## ***MILP***
 ```bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver milp --maxsteps 5
 ```
@@ -309,7 +313,7 @@ Guessed variable(s) (2):
 ============================================================
 ```
 Using ```--propagate```
-##***Propagate***
+## ***Propagate***
 
 ``` bash
 python3 autoguess.py --inputfile ciphers/Example1/relationfile.txt --solver propagate --known "u,v"
