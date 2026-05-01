@@ -53,7 +53,7 @@ A standalone implementation of the [Autoguess](https://github.com/hadipourh/auto
 | Python 3.10+ | Yes | Runtime |
 | [PySAT](https://github.com/pysathq/pysat) | Yes | SAT solving (core solver) |
 | [Graphviz](https://graphviz.org/) (system package) | Recommended | Render determination flow graphs |
-| [MiniZinc](https://www.minizinc.org/) | For CP solver | Constraint programming |
+| [MiniZinc](https://www.minizinc.org/) (bundled distribution) | For CP solver | Constraint programming — must include cp-sat / gecode / chuffed (Homebrew formula and most apt packages are MIP-only and will NOT work) |
 | [Gurobi](https://www.gurobi.com/) | For MILP solver | Mixed-integer linear programming (requires license) |
 | [pySMT](https://github.com/pysmt/pysmt) + Z3 | For SMT solver | Satisfiability modulo theories |
 
@@ -76,9 +76,22 @@ pip install 'python-sat[pblib,aiger]' graphviz dot2tex
 Install only the solvers you plan to use:
 
 ```bash
-# CP solver (requires MiniZinc system binary)
+# CP solver (requires MiniZinc system binary with bundled solvers)
 pip install minizinc
-# Then install MiniZinc: brew install minizinc (macOS) or apt install minizinc (Ubuntu)
+
+# Install MiniZinc — IMPORTANT: install the *bundled* distribution.
+# The Homebrew formula `brew install minizinc` and most apt packages ship ONLY
+# MIP solvers (COIN-BC, HiGHS, SCIP, ...) and DO NOT include cp-sat / gecode / chuffed.
+# Use one of these instead:
+#   macOS:  brew install --cask minizincide              # bundles gecode, chuffed, cp-sat
+#   Ubuntu: snap install minizinc --classic              # bundled snap
+#   Any OS: https://www.minizinc.org/software.html       # official bundled installer
+#
+# After install, verify the solvers are present:
+#   minizinc --solvers      # should list gecode, chuffed, cp-sat
+#
+# On macOS, if `minizinc` is not on PATH after the cask install, add:
+#   export PATH="/Applications/MiniZincIDE.app/Contents/Resources:$PATH"
 
 # SMT solver
 pip install pysmt
@@ -497,7 +510,7 @@ python3 autoguess.py -i ciphers/Example1/relationfile.txt -s propagate --known x
 | Solver | Strengths | Notes |
 |---|---|---|
 | **SAT** (`cadical153`) | Fast, supports `--findmin` incrementally | Default. Best for most problems. |
-| **CP** (`cp-sat`) | Good for optimization (`-cpopt 1`) | Requires MiniZinc. Falls back to gecode/chuffed if cp-sat unavailable. |
+| **CP** (`cp-sat`) | Good for optimization (`-cpopt 1`) | Requires the **bundled** MiniZinc distribution (cask `minizincide` on macOS / snap on Ubuntu / installer from minizinc.org). The Homebrew formula and most apt packages are MIP-only and will silently fall back to `mip`. |
 | **MILP** (Gurobi) | Optimal solutions, good for large problems | Requires Gurobi license. Use `-t` for threads. |
 | **SMT** (`z3`) | Flexible, supports bitvector reasoning | Slower than SAT for pure boolean problems. |
 | **Propagate** | No external solver needed | Only deduces from known variables, no search. |
@@ -510,6 +523,21 @@ python3 autoguess.py -i ciphers/Example1/relationfile.txt -s propagate --known x
 
 **`ModuleNotFoundError: No module named 'minizinc'`**
 CP solver requires: `pip install minizinc` + system MiniZinc binary.
+
+**`WARNING: Solver 'cp-sat' not available` / `OR Tools is not available`**
+Your MiniZinc install is missing OR-Tools/CP-SAT (and likely Gecode/Chuffed too).
+This happens when MiniZinc was installed via the Homebrew formula
+(`brew install minizinc`) or apt, both of which ship only MIP solvers.
+Fix on macOS:
+```bash
+brew uninstall minizinc
+brew install --cask minizincide
+minizinc --solvers   # verify cp-sat, gecode, chuffed now appear
+```
+On Ubuntu use `snap install minizinc --classic`, or download the bundled
+installer from https://www.minizinc.org/software.html.
+As a workaround, pass an installed backend explicitly, e.g.
+`--solver cp --cpsolver coin-bc`, or switch to `--solver sat`.
 
 **`ModuleNotFoundError: No module named 'pysmt'`**
 SMT solver requires: `pip install pysmt && pysmt-install --z3`
